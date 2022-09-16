@@ -54,56 +54,6 @@ full_evan_dataset <- read_sav("Full Evan Dataset.zip")
 
 countrylevelanalysis <- read_sav("Country level analysis for DI2.sav")
 
-fullcountrylevel <- read_excel("Country-level index.xlsx")
-
-```
-
-## Country level exploratory analysis
-```{r}
-smallcla <- subset(fullcountrylevel, select = c(
-  "Civil_Liberties", "Democracy", "Freedom", "Meritocracy", "GINI",
-  "Individualism"
-))
-
-## civil liberties / democracy / freedom - make an index with these three
-## Leave transparency as a single index
-
-chart.Correlation(smallcla)
-```
-
-## factor analysis of CL/Democ/Freedom 
-## Caculating a combined factor made up of CL/Democ/Freedom
-```{r}
-fullcountrylevel$`Country/Territory` <- as.factor(fullcountrylevel$`Country/Territory`)
-
-## Recode CL / Democ so higher scores 
-## indicate more CL and DEMOC
-fullcountrylevel$Civil_Libertiesreversed <- recode(fullcountrylevel$Civil_Liberties, "1=7; 2=6; 3=5; 4=4; 5=3; 6=2; 7=1")
-
-library(GPArotation)
-ml <- fa(r = smallcla,
-         nfactors = 3,
-         rotate = "oblimin",
-         fm= "ml",
-         residuals = T) # Max likelihood
-
-ml
-
-fullcountrylevel$Economic_Social_Structure = NA
-
-fullcountrylevel <- fullcountrylevel %>%
-  mutate(Economic_Social_Structure = 
-                 ifelse(`Country/Territory` == "Abkhazia", Civil_Liberties + Democracy + Freedom / 210,
-    ifelse(`Country/Territory` == "Afghanistan", Civil_Liberties + Democracy + Freedom / 210,
-           ifelse(`Country/Territory` == "Albania", Civil_Liberties + Democracy + Freedom / 210,
-                  ifelse(`Country/Territory` == "Algeria", Civil_Liberties + Democracy + Freedom / 210,
-                         ""
-                         
-                  )))))
-
-
-
-mean(fullcountrylevel$Civil_Liberties + fullcountrylevel$Democracy + fullcountrylevel$Freedom / 210)
 ```
 
 ## Attaching country names to country level analysis DS
@@ -245,6 +195,7 @@ dat2$Country[dat2$Country == 42] <- "Venezuela"
 
 dat2$Country <- as.factor(dat2$Country)
 ```
+
 ## Creating new variable - grouping by region
 ```{r}
 dat2$Region = NA
@@ -380,6 +331,7 @@ dat2$income_report2 <- as.numeric(dat2$income_report2)
 ```{r}
 dat2$Conspiracy_Theory <- as.numeric(dat2$Conspiracy_Theory)
 dat2$PolOrientation <- as.factor(dat2$PolOrientation)
+dat2$System_Justification <- as.numeric(dat2$System_Justification)
 
 dat2 %>% ggplot(aes(x = PolOrientation, y = Conspiracy_Theory)) +
         geom_col(aes(fill = PolOrientation))
@@ -401,9 +353,6 @@ cor(dat2$Conspiracy_Theory, dat2$PolEngagement_Civic, use = "complete.obs")
 cor(dat2$Conspiracy_Theory, dat2$PolEngagement_Voice, use = "complete.obs")
 
 cor(dat2$Conspiracy_Theory, dat2$System_Justification, use = "complete.obs")
-
-dat2$System_Justification <- as.numeric(dat2$System_Justification)
-## look for media measures
 
 
 ```
