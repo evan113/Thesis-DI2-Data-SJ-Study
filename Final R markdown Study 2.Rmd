@@ -1,0 +1,1166 @@
+---
+title: "Study 2"
+author: "Evan Valdes"
+date: "9/24/2020"
+output: html_document
+---
+
+```{r}
+## Set working directory----
+setwd("/Users/Evanvaldes1/Desktop/MASSEY/STUDY 2/CODE AND DATA")
+```
+
+```{r}
+library(dplyr)
+library(plyr)
+library(stringr)
+library(rms)
+library(knitr)
+library(readr)
+library(surveydata)
+library(Hmisc)
+library(ggplot2)
+library(psych)
+library(haven)
+library(stats)
+library(lavaan)
+library(tableone)
+library(semPlot)
+library(semTools)
+library(tidyverse)
+library(PerformanceAnalytics)
+library(ggiraphExtra)
+library(equaltestMI)
+library(stargazer)
+library(sjPlot)
+library(apaTables)
+library(interactions)
+library(jtools)
+library(mice)
+library(BaylorEdPsych)
+library(lme4)
+library(styler)
+library(readxl)
+library(plm)
+library(ggdag)
+library(dagitty)
+library(reghelper) # Simple slopes for interactions
+library(mlma) # Multilevel mediation analysis
+```
+
+## Opening indvidual and country level data
+```{r}
+full_evan_dataset <- read_sav("Full Evan Dataset.zip")
+
+countrylevelanalysis <- read_sav("Country level analysis for DI2.sav")
+
+fullcountrylevel <- read_excel("Country-level index.xlsx")
+
+```
+
+## Country level exploratory analysis
+```{r}
+smallcla <- subset(fullcountrylevel, select = c(
+  "Civil_Liberties", "Democracy", "Freedom", "Meritocracy", "GINI",
+  "Individualism"
+))
+
+## civil liberties / democracy / freedom - make an index with these three
+## Leave transparency as a single index
+
+chart.Correlation(smallcla)
+```
+
+## factor analysis of CL/Democ/Freedom 
+## Caculating a combined factor made up of CL/Democ/Freedom
+```{r}
+fullcountrylevel$`Country/Territory` <- as.factor(fullcountrylevel$`Country/Territory`)
+
+## Recode CL / Democ so higher scores 
+## indicate more CL and DEMOC
+fullcountrylevel$Civil_Libertiesreversed <- recode(fullcountrylevel$Civil_Liberties, "1=7; 2=6; 3=5; 4=4; 5=3; 6=2; 7=1")
+
+library(GPArotation)
+ml <- fa(r = smallcla,
+         nfactors = 3,
+         rotate = "oblimin",
+         fm= "ml",
+         residuals = T) # Max likelihood
+
+ml
+
+fullcountrylevel$Economic_Social_Structure = NA
+
+fullcountrylevel <- fullcountrylevel %>%
+  mutate(Economic_Social_Structure = 
+                 ifelse(`Country/Territory` == "Abkhazia", Civil_Liberties + Democracy + Freedom / 210,
+    ifelse(`Country/Territory` == "Afghanistan", Civil_Liberties + Democracy + Freedom / 210,
+           ifelse(`Country/Territory` == "Albania", Civil_Liberties + Democracy + Freedom / 210,
+                  ifelse(`Country/Territory` == "Algeria", Civil_Liberties + Democracy + Freedom / 210,
+                         ""
+                         
+                  )))))
+
+
+
+mean(fullcountrylevel$Civil_Liberties + fullcountrylevel$Democracy + fullcountrylevel$Freedom / 210)
+```
+
+## Attaching country names to country level analysis DS
+```{r}
+countrylevelanalysis$Country <- as.character(countrylevelanalysis$Country)
+countrylevelanalysis$Country[countrylevelanalysis$Country == 1] <- "Argentina"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 2] <- "Australia"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 3] <- "Bolivia"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 4] <- "Brazil"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 5] <- "Canada"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 6] <- "China"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 7] <- "Colombia"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 8] <- "Egypt"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 9] <- "Finland"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 10] <- "Germany"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 11] <- "Greece"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 12] <- "Hong Kong"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 13] <- "Hungary"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 14] <- "India"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 15] <- "Indonesia"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 16] <- "Italy"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 17] <- "Japan"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 18] <- "Kenya"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 19] <- "Malaysia"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 20] <- "Mexico"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 21] <- "Morocco"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 22] <- "Netherlands"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 23] <- "New Zealand"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 24] <- "Nigeria"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 25] <- "Pakistan"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 26] <- "Panama"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 27] <- "Peru"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 28] <- "Philippines"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 29] <- "Poland"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 30] <- "Portugal"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 31] <- "Russia"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 32] <- "Serbia"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 33] <- "Singapore"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 34] <- "South Africa"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 35] <- "South Korea"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 36] <- "Spain"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 37] <- "Sweden"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 38] <- "Taiwan"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 39] <- "Turkey"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 40] <- "UK"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 41] <- "US"
+countrylevelanalysis$Country[countrylevelanalysis$Country == 42] <- "Venezuela"
+
+countrylevelanalysis$Country <- as.factor(countrylevelanalysis$Country)
+```
+
+## Assigning Venezuela GDP_PPP according to https://data.worldbank.org/indicator/NY.GDP.PCAP.PP.CD?locations=VE
+```{r}
+countrylevelanalysis$GDP_PPP[countrylevelanalysis$Country %in% "Venezuela"] <- "4500"
+```
+
+## Groupwise correlation
+```{r}
+smallcla <- subset(countrylevelanalysis, select = c(
+  "System_Justification", "GDP_PPP", "GINI_UN",
+  "Democracy_Index", "Factionalized_Elites",
+  "State_Legitimacy_Index", "Ind_Col","Life_Satisfaction"
+))
+
+smallcla$System_Justification <- as.numeric(smallcla$System_Justification)
+smallcla$GDP_PPP <- as.numeric(smallcla$GDP_PPP)
+smallcla$GINI_UN <- as.numeric(smallcla$GINI_UN)
+smallcla$Democracy_Index <- as.numeric(smallcla$Democracy_Index)
+smallcla$Factionalized_Elites <- as.numeric(smallcla$Factionalized_Elites)
+smallcla$State_Legitimacy_Index <- as.numeric(smallcla$State_Legitimacy_Index)
+smallcla$Ind_Col <- as.numeric(smallcla$Ind_Col)
+smallcla$Life_Satisfaction <- as.numeric(smallcla$Life_Satisfaction)
+
+chart.Correlation(smallcla)
+
+apa.cor.table(smallcla, filename = "Countrylevelmoderators_DI2.doc")
+```
+
+
+## Full data - indvidual level analysis
+```{r}
+## Getting NA's instead of blanks for income and Salary
+
+dat2 <- full_evan_dataset %>% mutate_at(
+  .vars = c(
+    "Income_1", "Income_2",
+    "Income_3", "Income_4", "Salary_1", "Salary_2",
+    "Salary_3", "Salary_4", "System_Justification"
+  ),
+  .funs = list(~ ifelse(. == "", NA, as.character(.)))
+)
+```
+
+## Attaching country names
+```{r}
+dat2$Country <- as.character(dat2$Country)
+dat2$Country[dat2$Country == 1] <- "Argentina"
+dat2$Country[dat2$Country == 2] <- "Australia"
+dat2$Country[dat2$Country == 3] <- "Bolivia"
+dat2$Country[dat2$Country == 4] <- "Brazil"
+dat2$Country[dat2$Country == 5] <- "Canada"
+dat2$Country[dat2$Country == 6] <- "China"
+dat2$Country[dat2$Country == 7] <- "Colombia"
+dat2$Country[dat2$Country == 8] <- "Egypt"
+dat2$Country[dat2$Country == 9] <- "Finland"
+dat2$Country[dat2$Country == 10] <- "Germany"
+dat2$Country[dat2$Country == 11] <- "Greece"
+dat2$Country[dat2$Country == 12] <- "Hong Kong"
+dat2$Country[dat2$Country == 13] <- "Hungary"
+dat2$Country[dat2$Country == 14] <- "India"
+dat2$Country[dat2$Country == 15] <- "Indonesia"
+dat2$Country[dat2$Country == 16] <- "Italy"
+dat2$Country[dat2$Country == 17] <- "Japan"
+dat2$Country[dat2$Country == 18] <- "Kenya"
+dat2$Country[dat2$Country == 19] <- "Malaysia"
+dat2$Country[dat2$Country == 20] <- "Mexico"
+dat2$Country[dat2$Country == 21] <- "Morocco"
+dat2$Country[dat2$Country == 22] <- "Netherlands"
+dat2$Country[dat2$Country == 23] <- "New Zealand"
+dat2$Country[dat2$Country == 24] <- "Nigeria"
+dat2$Country[dat2$Country == 25] <- "Pakistan"
+dat2$Country[dat2$Country == 26] <- "Panama"
+dat2$Country[dat2$Country == 27] <- "Peru"
+dat2$Country[dat2$Country == 28] <- "Philippines"
+dat2$Country[dat2$Country == 29] <- "Poland"
+dat2$Country[dat2$Country == 30] <- "Portugal"
+dat2$Country[dat2$Country == 31] <- "Russia"
+dat2$Country[dat2$Country == 32] <- "Serbia"
+dat2$Country[dat2$Country == 33] <- "Singapore"
+dat2$Country[dat2$Country == 34] <- "South Africa"
+dat2$Country[dat2$Country == 35] <- "South Korea"
+dat2$Country[dat2$Country == 36] <- "Spain"
+dat2$Country[dat2$Country == 37] <- "Sweden"
+dat2$Country[dat2$Country == 38] <- "Taiwan"
+dat2$Country[dat2$Country == 39] <- "Turkey"
+dat2$Country[dat2$Country == 40] <- "UK"
+dat2$Country[dat2$Country == 41] <- "US"
+dat2$Country[dat2$Country == 42] <- "Venezuela"
+
+dat2$Country <- as.factor(dat2$Country)
+```
+## Creating new variable - grouping by region
+```{r}
+dat2$Region = NA
+dat2$Region <- as.character(dat2$Region)
+## Nordic
+dat2$Region[dat2$Country %in% "Sweden"] <- "Nordic"
+dat2$Region[dat2$Country %in% "Finland"] <- "Nordic"
+## Anglo
+dat2$Region[dat2$Country %in% "Australia"] <- "Anglo"
+dat2$Region[dat2$Country %in% "New Zealand"] <- "Anglo"
+dat2$Region[dat2$Country %in% "UK"] <- "Anglo"
+dat2$Region[dat2$Country %in% "Canada"] <- "Anglo"
+dat2$Region[dat2$Country %in% "US"] <- "Anglo"
+## Western Europe
+dat2$Region[dat2$Country %in% "Greece"] <- "Western Europe"
+dat2$Region[dat2$Country %in% "Italy"] <- "Western Europe"
+dat2$Region[dat2$Country %in% "Portugal"] <- "Western Europe"
+dat2$Region[dat2$Country %in% "Spain"] <- "Western Europe"
+dat2$Region[dat2$Country %in% "Germany"] <- "Western Europe"
+dat2$Region[dat2$Country %in% "Netherlands"] <- "Western Europe"
+## Confucian Asia
+dat2$Region[dat2$Country %in% "Japan"] <- "Confucian Asia"
+dat2$Region[dat2$Country %in% "South Korea"] <- "Confucian Asia"
+dat2$Region[dat2$Country %in% "Taiwan"] <- "Confucian Asia"
+dat2$Region[dat2$Country %in% "China"] <- "Confucian Asia"
+dat2$Region[dat2$Country %in% "Hong Kong"] <- "Confucian Asia"
+## Eastern Europe
+dat2$Region[dat2$Country %in% "Hungary"] <- "Eastern Europe"
+dat2$Region[dat2$Country %in% "Turkey"] <- "Eastern Europe"
+dat2$Region[dat2$Country %in% "Serbia"] <- "Eastern Europe"
+dat2$Region[dat2$Country %in% "Russia"] <- "Eastern Europe"
+dat2$Region[dat2$Country %in% "Poland"] <- "Eastern Europe"
+## South East Asia
+dat2$Region[dat2$Country %in% "Singapore"] <- "South East Asia"
+dat2$Region[dat2$Country%in% "Indonesia"] <- "South East Asia"
+dat2$Region[dat2$Country %in% "Malaysia"] <- "South East Asia"
+dat2$Region[dat2$Country %in% "Philippines"] <- "South East Asia"
+## Latin America
+dat2$Region[dat2$Country %in% "Bolivia"] <- "Latin America"
+dat2$Region[dat2$Country %in% "Argentina"] <- "Latin America"
+dat2$Region[dat2$Country %in% "Panama"] <- "Latin America"
+dat2$Region[dat2$Country %in% "Peru"] <- "Latin America"
+dat2$Region[dat2$Country %in% "Colombia"] <- "Latin America"
+dat2$Region[dat2$Country %in% "Mexico"] <- "Latin America"
+dat2$Region[dat2$Country %in% "Venezuela"] <- "Latin America"
+dat2$Region[dat2$Country %in% "Brazil"] <- "Latin America"
+## Northern Africa
+dat2$Region[dat2$Country %in% "Egypt"] <- "Northern Africa"
+dat2$Region[dat2$Country %in% "Morocco"] <- "Northern Africa"
+## SubS. Africa
+dat2$Region[dat2$Country %in% "South Africa"] <- "SubS. Africa"
+dat2$Region[dat2$Country %in% "Kenya"] <- "SubS. Africa"
+dat2$Region[dat2$Country %in% "Nigeria"] <- "SubS. Africa"
+## South Asian
+dat2$Region[dat2$Country %in% "Pakistan"] <- "South Asian"
+dat2$Region[dat2$Country %in% "India"] <- "South Asian"
+
+```
+
+## exploring missing data
+```{r}
+any(is.na(dat2))
+
+sum(is.na(dat2))
+
+colSums(is.na(dat2))
+
+which(is.na(dat2$Country))
+
+
+## Removing missing values from the country column
+dat2 <- dat2[!(is.na(dat2$Country)), ]
+dat2 <- dat2[!(is.na(dat2$PolOrientation)), ]
+dat2 <- dat2[!(is.na(dat2$Conspiracy_Theory)), ]
+```
+
+## Summary of income data
+```{r}
+options(scipen = 999) # turning off scientific notation
+summary(dat2$Income_1)
+summary(dat2$Income_2)
+summary(dat2$Income_3)
+summary(dat2$Income_4)
+```
+
+## Creating new variable - how did participants report income
+```{r}
+dat2$income_report = NA
+dat2$income_report <- as.character(dat2$income_report)
+
+dat2[ which(dat2$Income_1 != FALSE), "income_report" ] = "Daily" 
+dat2[ which(dat2$Income_2 != FALSE), "income_report" ] = "Weekly"
+dat2[ which(dat2$Income_3 != FALSE), "income_report" ] = "Monthly"
+dat2[ which(dat2$Income_4 != FALSE), "income_report" ] = "Annually"
+
+dat2$income_report <- factor(dat2$income_report, levels = c("Annually", "Monthly",
+                                                            "Weekly", "Daily"))
+```
+
+
+## Bar plot of income reporting styles by country
+```{r}
+library(forcats)
+ 
+   ggplot(dat2, aes(x = Country, fill = income_report)) +
+  geom_bar(width = 0.6, size = 0.6, alpha = 0.8, position = position_fill(reverse = TRUE)) +
+  scale_fill_discrete(
+    name = "Income Report",
+    labels = c("Annually", "Monthly", "Weekly", "Daily", "NA Missing Data")
+  ) +
+  theme(
+    text = element_text(size = 10),
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = .2)
+  ) +
+  labs(title = "Income Report Stacked Barplot")
+```
+
+## Changing income_report variable from character to numeric
+## daily = 1 / weekly = 2 / monthly = 3 / annually = 4
+
+```{r}
+dat2$income_report2 = NA
+
+dat2$income_report2[dat2$income_report == "Daily"] = "1"
+dat2$income_report2[dat2$income_report == "Weekly"] = "2"
+dat2$income_report2[dat2$income_report == "Monthly"] = "3"
+dat2$income_report2[dat2$income_report == "Annually"] = "4"
+
+dat2$income_report2 <- as.numeric(dat2$income_report2)
+```
+
+## Conspiracy theory graphs of interest
+```{r}
+dat2$Conspiracy_Theory <- as.numeric(dat2$Conspiracy_Theory)
+dat2$PolOrientation <- as.factor(dat2$PolOrientation)
+
+dat2 %>% ggplot(aes(x = PolOrientation, y = Conspiracy_Theory)) +
+        geom_col(aes(fill = PolOrientation))
+
+dat2 %>% ggplot(aes(x = PolEngagement_Voting, y =Conspiracy_Theory)) +
+        geom_col(aes(fill = PolEngagement_Voting))
+
+dat2 %>% ggplot(aes(x = PolEngagement_Civic, y =Conspiracy_Theory)) +
+        geom_col(aes(fill = PolEngagement_Voting))
+
+dat2 %>% ggplot(aes(x = System_Justification, y =Conspiracy_Theory)) +
+        geom_col(aes(fill = PolEngagement_Voting))
+## build a profile based upon these measures for who is conspiracy thinking
+## think cross-culturally - country level indexes in relation to conspiracy 
+## thinking 
+## cor con and pol interest
+cor(dat2$Conspiracy_Theory, dat2$PolEngagement_Voting, use = "complete.obs")
+cor(dat2$Conspiracy_Theory, dat2$PolEngagement_Civic, use = "complete.obs")
+cor(dat2$Conspiracy_Theory, dat2$PolEngagement_Voice, use = "complete.obs")
+
+cor(dat2$Conspiracy_Theory, dat2$System_Justification, use = "complete.obs")
+
+dat2$System_Justification <- as.numeric(dat2$System_Justification)
+## look for media measures
+
+
+```
+
+## Creating Social Mobility index
+## Data accessed from https://www.weforum.org/reports/global-social-mobility-index-2020-why-economies-benefit-from-fixing-inequality/#country-rankings 
+```{r}
+dat3 <- dat2 %>%
+  mutate(Social_Mobility = ifelse(Country == "Argentina", 57.3,
+    ifelse(Country == "Australia", 75.1,
+      ifelse(Country == "Brazil", 52.1,
+        ifelse(Country == "Bolivia", 48.2,
+          ifelse(Country == "Canada", 76.1,
+            ifelse(Country == "China", 61.5,
+              ifelse(Country == "Columbia", 59.3,
+                ifelse(Country == "Egypt", 44.8,
+                  ifelse(Country == "Finland", 83.6,
+                    ifelse(Country == "Germany", 78.8,
+                      ifelse(Country == "Greece", 59.8,
+                        ifelse(Country == "Hong Kong", 61.5,
+                          ifelse(Country == "Hungary", 65.8,
+                            ifelse(Country == "India", 42.7,
+                              ifelse(Country == "Indonesia", 49.3,
+                                ifelse(Country == "Italy", 67.4,
+                                  ifelse(Country == "Japan", 76.1,
+                                    ifelse(Country == "Kenya", NA,
+                                      ifelse(Country == "Malaysia", 62.0,
+                                        ifelse(Country == "Mexico", 52.6,
+                                          ifelse(Country == "Morocco", NA,
+                                            ifelse(Country == "Netherlands", 82.4,
+                                              ifelse(Country == "New Zealand", 74.3,
+                                                ifelse(Country == "Nigeria", NA,
+                                                  ifelse(Country == "Pakistan", 36.7,
+                                                    ifelse(Country == "Panama", 51.4,
+                                                      ifelse(Country == "Peru", 49.9,
+                                                        ifelse(Country == "Philippines", 51.7,
+                                                          ifelse(Country == "Poland", 69.1,
+                                                            ifelse(Country == "Portugal", 72.0,
+                                                              ifelse(Country == "Russia", 64.7,
+                                                                ifelse(Country == "Serbia", 63.8,
+                                                                  ifelse(Country == "Singapore", 74.6,
+                                                                    ifelse(Country == "South Africa", 41.4,
+                                                                      ifelse(Country == "South Korea", 71.4,
+                                                                        ifelse(Country == "Spain", 70.0,
+                                                                          ifelse(Country == "Sweden", 83.5,
+                                                                            ifelse(Country == "Taiwan", 61.5,
+                                                                              ifelse(Country == "Turkey", 51.3,
+                                                                                ifelse(Country == "UK", 74.4,
+                                                                                  ifelse(Country == "US", 70.4,
+                                                                                    ifelse(Country == "Venezuela", 64.4,
+                                                                                           "")
+                                                                                  )
+                                                                                )
+                                                                              )
+                                                                            )
+                                                                          )
+                                                                        )
+                                                                      )
+                                                                    )
+                                                                  )
+                                                                )
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  ))
+
+```
+
+## Adding GINI coeffcient scores (larger scores indicate greater inequality)
+## Adding Freedom/Civil Liberty Scores (Larger scores indicate greater freedom)
+```{r}
+dat4 <- dat3 %>%
+  mutate(GINI = ifelse(Country == "Argentina", 42.3,
+    ifelse(Country == "Australia", 33.0,
+      ifelse(Country == "Brazil", 48.9,
+        ifelse(Country == "Bolivia", 43.6,
+          ifelse(Country == "Canada", 33.0,
+            ifelse(Country == "China", 48.0,
+              ifelse(Country == "Columbia", 54.2,
+                ifelse(Country == "Egypt", 31.0,
+                  ifelse(Country == "Finland", 27.0,
+                    ifelse(Country == "Germany", 31.0,
+                      ifelse(Country == "Greece", 33.0,
+                        ifelse(Country == "Hong Kong", 53.0,
+                          ifelse(Country == "Hungary", 30.0,
+                            ifelse(Country == "India", 47.0,
+                              ifelse(Country == "Indonesia", 37.0,
+                                ifelse(Country == "Italy", 35.0,
+                                  ifelse(Country == "Japan", 29.0,
+                                    ifelse(Country == "Kenya", 41.0,
+                                      ifelse(Country == "Malaysia", 42.0,
+                                        ifelse(Country == "Mexico", 45.4,
+                                          ifelse(Country == "Morocco", 35.0,
+                                            ifelse(Country == "Netherlands", 29.0,
+                                              ifelse(Country == "New Zealand", 32.0,
+                                                ifelse(Country == "Nigeria", 35.0,
+                                                  ifelse(Country == "Pakistan", 29.0,
+                                                    ifelse(Country == "Panama", 49.0,
+                                                      ifelse(Country == "Peru", 43.8,
+                                                        ifelse(Country == "Philippines", 42.0,
+                                                          ifelse(Country == "Poland", 30.0,
+                                                            ifelse(Country == "Portugal", 32.0,
+                                                              ifelse(Country == "Russia", 35.0,
+                                                                ifelse(Country == "Serbia", 34.0,
+                                                                  ifelse(Country == "Singapore", 35.6,
+                                                                    ifelse(Country == "South Africa", 63.0,
+                                                                      ifelse(Country == "South Korea", 31.0,
+                                                                        ifelse(Country == "Spain", 34.0,
+                                                                          ifelse(Country == "Sweden", 26.0,
+                                                                            ifelse(Country == "Taiwan", 34.0,
+                                                                              ifelse(Country == "Turkey", 41.0,
+                                                                                ifelse(Country == "UK", 36.0,
+                                                                                  ifelse(Country == "US", 41.0,
+                                                                                    ifelse(Country == "Venezuela", 46.0,
+                                                                                           "")
+                                                                                  )
+                                                                                )
+                                                                              )
+                                                                            )
+                                                                          )
+                                                                        )
+                                                                      )
+                                                                    )
+                                                                  )
+                                                                )
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  ))
+
+dat5 <- dat4 %>%
+  mutate(Freedom = ifelse(Country == "Argentina", 84,
+    ifelse(Country == "Australia", 95,
+      ifelse(Country == "Brazil", 73,
+        ifelse(Country == "Bolivia", 66,
+          ifelse(Country == "Canada", 98,
+            ifelse(Country == "China", 9,
+              ifelse(Country == "Columbia", 64,
+                ifelse(Country == "Egypt", 18,
+                  ifelse(Country == "Finland", 100,
+                    ifelse(Country == "Germany", 94,
+                      ifelse(Country == "Greece", 87,
+                        ifelse(Country == "Hong Kong", 43,
+                          ifelse(Country == "Hungary", 69,
+                            ifelse(Country == "India", 66,
+                              ifelse(Country == "Indonesia", 59,
+                                ifelse(Country == "Italy", 90,
+                                  ifelse(Country == "Japan", 96,
+                                    ifelse(Country == "Kenya", 48,
+                                      ifelse(Country == "Malaysia", 66,
+                                        ifelse(Country == "Mexico", 60,
+                                          ifelse(Country == "Morocco", 37,
+                                            ifelse(Country == "Netherlands", 97,
+                                              ifelse(Country == "New Zealand", 99,
+                                                ifelse(Country == "Nigeria", 43,
+                                                  ifelse(Country == "Pakistan", 37,
+                                                    ifelse(Country == "Panama", 83,
+                                                      ifelse(Country == "Peru", 72,
+                                                        ifelse(Country == "Philippines", 55,
+                                                          ifelse(Country == "Poland", 81,
+                                                            ifelse(Country == "Portugal", 95,
+                                                              ifelse(Country == "Russia", 19,
+                                                                ifelse(Country == "Serbia", 62,
+                                                                  ifelse(Country == "Singapore", 47,
+                                                                    ifelse(Country == "South Africa", 79,
+                                                                      ifelse(Country == "South Korea", 83,
+                                                                        ifelse(Country == "Spain", 90,
+                                                                          ifelse(Country == "Sweden", 100,
+                                                                            ifelse(Country == "Taiwan", 94,
+                                                                              ifelse(Country == "Turkey", 32,
+                                                                                ifelse(Country == "UK", 93,
+                                                                                  ifelse(Country == "US", 83,
+                                                                                    ifelse(Country == "Venezuela", 14,
+                                                                                           "")
+                                                                                  )
+                                                                                )
+                                                                              )
+                                                                            )
+                                                                          )
+                                                                        )
+                                                                      )
+                                                                    )
+                                                                  )
+                                                                )
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  ))
+
+```
+
+
+## Adding political party in power
+## Data collected from https://datacatalog.worldbank.org/search/dataset/0039819
+## 0 = right, 1 = center, 2 = left
+```{r}
+dat6 <- dat5 %>%
+  mutate(polpartypower = ifelse(Country == "Argentina", 2,
+    ifelse(Country == "Australia", 2,
+      ifelse(Country == "Brazil", 2,
+        ifelse(Country == "Bolivia", 2,
+          ifelse(Country == "Canada", 0,
+            ifelse(Country == "China", 2,
+              ifelse(Country == "Columbia", 0,
+                ifelse(Country == "Egypt", 1,
+                  ifelse(Country == "Finland", 0,
+                    ifelse(Country == "Germany", 0,
+                      ifelse(Country == "Greece", 2,
+                        ifelse(Country == "Hong Kong", 1,
+                          ifelse(Country == "Hungary", 0,
+                            ifelse(Country == "India", 2,
+                              ifelse(Country == "Indonesia", 2,
+                                ifelse(Country == "Italy", 0,
+                                  ifelse(Country == "Japan", 0,
+                                    ifelse(Country == "Kenya", 1,
+                                      ifelse(Country == "Malaysia", 2,
+                                        ifelse(Country == "Mexico", 0,
+                                          ifelse(Country == "Morocco", 0,
+                                            ifelse(Country == "Netherlands", 2,
+                                              ifelse(Country == "New Zealand", 2,
+                                                ifelse(Country == "Nigeria", 0,
+                                                  ifelse(Country == "Pakistan", 2,
+                                                    ifelse(Country == "Panama", 1,
+                                                      ifelse(Country == "Peru", 2,
+                                                        ifelse(Country == "Philippines", 1,
+                                                          ifelse(Country == "Poland", 1,
+                                                            ifelse(Country == "Portugal", 0,
+                                                              ifelse(Country == "Russia", 1,
+                                                                ifelse(Country == "Serbia", 2,
+                                                                  ifelse(Country == "Singapore", 1,
+                                                                    ifelse(Country == "South Africa", 2,
+                                                                      ifelse(Country == "South Korea", 2,
+                                                                        ifelse(Country == "Spain", 2,
+                                                                          ifelse(Country == "Sweden", 2,
+                                                                            ifelse(Country == "Taiwan", 0,
+                                                                              ifelse(Country == "Turkey", 0,
+                                                                                ifelse(Country == "UK", 0,
+                                                                                  ifelse(Country == "US", 0,
+                                                                                    ifelse(Country == "Venezuela", 2,
+                                                                                           "")
+                                                                                  )
+                                                                                )
+                                                                              )
+                                                                            )
+                                                                          )
+                                                                        )
+                                                                      )
+                                                                    )
+                                                                  )
+                                                                )
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  ))
+```
+
+## Making a subset of the data for income cleaning purposes
+```{r}
+INCOMECLEAN <- subset(dat6, select = c(
+  "Country", "Region" ,"age", "Gender", "PolOrientation", "Total_Income_usd", 
+  "PPP", "RegIncome", "income_report", "income_report2", "Education", "WellinSociety", 
+  "Life_Satisfaction", "System_Justification", "Social_Mobility", "GINI", "Freedom",
+  "polpartypower"
+))
+
+INCOMECLEAN$GINI <- as.numeric(INCOMECLEAN$GINI)
+INCOMECLEAN$Freedom <- as.numeric(INCOMECLEAN$Freedom)
+INCOMECLEAN$System_Justification <- as.numeric(INCOMECLEAN$System_Justification)
+INCOMECLEAN$PolOrientation <- as.numeric(INCOMECLEAN$PolOrientation)
+INCOMECLEAN$Total_Income_usd <- as.numeric(INCOMECLEAN$Total_Income_usd)
+INCOMECLEAN$Education <- as.numeric(INCOMECLEAN$Education)
+INCOMECLEAN$WellinSociety <- as.numeric(INCOMECLEAN$WellinSociety)
+INCOMECLEAN$Life_Satisfaction <- as.numeric(INCOMECLEAN$Life_Satisfaction)
+INCOMECLEAN$Social_Mobility <- as.numeric(INCOMECLEAN$Social_Mobility)
+INCOMECLEAN$polpartypower <- as.numeric(INCOMECLEAN$polpartypower)
+```
+
+```{r}
+smallcor <- subset(INCOMECLEAN, select = c("System_Justification", "Total_Income_usd",
+                                           "Education", "WellinSociety", "PolOrientation" ,"Life_Satisfaction",
+                                           "Social_Mobility", "GINI", "Freedom", "polpartypower"))
+
+chart.Correlation(smallcor)
+
+```
+
+## Creating new annual income variable based upon income 1 - 4
+## PIPE OPERATOR = SHIFT + CTRL + M (AND THEN)
+```{r}
+INCOMECLEAN$Total_Income = NA
+INCOMECLEAN$Total_Income <- as.numeric(INCOMECLEAN$Total_Income)
+
+INCOMECLEAN <- INCOMECLEAN %>% mutate(
+  Total_Income =
+    dplyr::coalesce(
+      Income_4, 12 * Income_3, 52 * Income_2,
+      365 * Income_1
+    )
+)
+
+```
+
+```{r}
+
+annual_inc  <- function(Income_1, Income_2, Income_3, Income_4){
+  if (is.na(Income_1) == FALSE) Income_1*365
+  else if (is.na(Income_2) == FALSE) Income_2*52
+  else if (is.na(Income_3) == FALSE) Income_3*12
+  else if (is.na(Income_4) == FALSE) Income_4
+  else NA}
+
+INCOMECLEAN$annual_inc = mapply(FUN = annual_inc, INCOMECLEAN$Income_1, INCOMECLEAN$Income_2, INCOMECLEAN$Income_3, INCOMECLEAN$Income_4)
+```
+
+## Creating Purchasing Power Parity column 
+```{r}
+INCOMECLEAN$PPP = NA
+INCOMECLEAN$PPP <- as.numeric(INCOMECLEAN$PPP)
+
+```
+
+## Converting income to USD to calculate PPP
+## Conversion rates and purchasing power parity conversion factors were accessed and recorded on 10/25/21
+## From https://www.xe.com/currencyconverter/ and ##https://data.oecd.org/conversion/purchasing-power-parities-ppp.htm
+```{r}
+
+INCOMECLEAN2 <- INCOMECLEAN %>%
+  mutate(Total_Income_usd = ifelse(Country == "Argentina", Total_Income / 99,
+    ifelse(Country == "Australia", Total_Income / 1.33,
+      ifelse(Country == "Brazil", Total_Income / 5.63,
+        ifelse(Country == "Bolivia", Total_Income / 6.89,
+          ifelse(Country == "Canada", Total_Income / 1.23,
+            ifelse(Country == "China", Total_Income / 6.39,
+              ifelse(Country == "Columbia", Total_Income / 3782.26,
+                ifelse(Country == "Egypt", Total_Income / 15.70,
+                  ifelse(Country == "Finland", Total_Income / .85,
+                    ifelse(Country == "Germany", Total_Income / .85,
+                      ifelse(Country == "Greece", Total_Income / .85,
+                        ifelse(Country == "Hong Kong", Total_Income / 7.77,
+                          ifelse(Country == "Hungary", Total_Income / 311.77,
+                            ifelse(Country == "India", Total_Income / 74.84,
+                              ifelse(Country == "Indonesia", Total_Income / 14127.27,
+                                ifelse(Country == "Italy", Total_Income / .85,
+                                  ifelse(Country == "Japan", Total_Income / 113,
+                                    ifelse(Country == "Kenya", Total_Income / 111,
+                                      ifelse(Country == "Malaysia", Total_Income / 4.15,
+                                        ifelse(Country == "Mexico", Total_Income / 20.24,
+                                          ifelse(Country == "Morocco", Total_Income / 9.03,
+                                            ifelse(Country == "Netherlands", Total_Income / .85,
+                                              ifelse(Country == "New Zealand", Total_Income / 1.39,
+                                                ifelse(Country == "Nigeria", Total_Income / 410.75,
+                                                  ifelse(Country == "Pakistan", Total_Income / 173.58,
+                                                    ifelse(Country == "Panama", Total_Income / 1,
+                                                      ifelse(Country == "Peru", Total_Income / 3.95,
+                                                        ifelse(Country == "Philippines", Total_Income / 50.80,
+                                                          ifelse(Country == "Poland", Total_Income / 3.94,
+                                                            ifelse(Country == "Portugal", Total_Income / .85,
+                                                              ifelse(Country == "Russia", Total_Income / 71.15,
+                                                                ifelse(Country == "Serbia", Total_Income / 100,
+                                                                  ifelse(Country == "Singapore", Total_Income / 1.34,
+                                                                    ifelse(Country == "South Africa", Total_Income / 14.55,
+                                                                      ifelse(Country == "South Korea", Total_Income / 1177,
+                                                                        ifelse(Country == "Spain", Total_Income / .85,
+                                                                          ifelse(Country == "Sweden", Total_Income / 8.59,
+                                                                            ifelse(Country == "Taiwan", Total_Income / 27.87,
+                                                                              ifelse(Country == "Turkey", Total_Income / 9.43,
+                                                                                ifelse(Country == "UK", Total_Income / .72,
+                                                                                  ifelse(Country == "US", Total_Income / 1,
+                                                                                    ifelse(Country == "Venezuela", Total_Income / 418223.84,
+                                                                                      ""
+                                                                                    )
+                                                                                  )
+                                                                                )
+                                                                              )
+                                                                            )
+                                                                          )
+                                                                        )
+                                                                      )
+                                                                    )
+                                                                  )
+                                                                )
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  ))
+```
+
+## ## Correlations between total income variables and perception of 
+## income stability and SJ after converting income to USD %
+```{r}
+INCOMECLEAN2$income_percent = NA
+INCOMECLEAN2$income_percent <- rank(INCOMECLEAN2$Total_Income_usd)/length(INCOMECLEAN2$Total_Income_usd)*100
+
+INCOMECLEAN2$Gender <- as.numeric(INCOMECLEAN2$Gender)
+INCOMECLEAN2$age <- as.numeric(INCOMECLEAN2$age)
+INCOMECLEAN2$PolOrientation <- as.numeric(INCOMECLEAN2$PolOrientation)
+INCOMECLEAN2$Education <- as.numeric(INCOMECLEAN2$Education)
+INCOMECLEAN2$WellinSociety <- as.numeric(INCOMECLEAN2$WellinSociety)
+INCOMECLEAN2$income_percent <- as.numeric(INCOMECLEAN2$income_percent)
+INCOMECLEAN2$RegIncome <- as.numeric(INCOMECLEAN2$RegIncome)
+INCOMECLEAN2$Rel_Mobility <- as.numeric(INCOMECLEAN2$Rel_Mobility)
+INCOMECLEAN2$System_Justification <- as.numeric(INCOMECLEAN2$System_Justification)
+INCOMECLEAN2$Identity2 <- as.numeric(INCOMECLEAN2$Identity2)
+INCOMECLEAN2$GlobalTrustInventory_GVT <- as.numeric(INCOMECLEAN2$GlobalTrustInventory_GVT)
+INCOMECLEAN2$income_report2 <- as.numeric(INCOMECLEAN2$income_report2)
+
+incomecor <- subset(INCOMECLEAN2, select = c(
+  income_percent, RegIncome, income_report2, Education, WellinSociety, PolOrientation,
+  Life_Satisfaction, Conspiracy_Theory, GlobalTrustInventory_GVT,
+  System_Justification, Gender, age, Identity2, Rel_Mobility  
+))
+
+chart.Correlation(incomecor)
+```
+
+## Country Wide Purchasing Power Parity (TI * PPP Factor)
+```{r}
+INCOMECLEAN2$Total_Income_usd <- as.numeric(INCOMECLEAN2$Total_Income_usd)
+## multiply total income by PPP conversion factor
+INCOMECLEAN2 <- INCOMECLEAN2 %>%
+  mutate(PPP = ifelse(Country == "Argentina", Total_Income_usd * 28.674,
+    ifelse(Country == "Australia", Total_Income_usd * 1.472,
+      ifelse(Country == "Brazil", Total_Income_usd * 2.362,
+        ifelse(Country == "Bolivia", Total_Income_usd * 2.6,
+          ifelse(Country == "Canada", Total_Income_usd * 1.206,
+            ifelse(Country == "China", Total_Income_usd * 4.106,
+              ifelse(Country == "Columbia", Total_Income_usd * 1352.7,
+                ifelse(Country == "Egypt", Total_Income_usd * 4.5,
+                  ifelse(Country == "Finland", Total_Income_usd * .840,
+                    ifelse(Country == "Germany", Total_Income_usd * .746,
+                      ifelse(Country == "Greece", Total_Income_usd * .544,
+                        ifelse(Country == "Hong Kong", Total_Income_usd * 6.083,
+                          ifelse(Country == "Hungary", Total_Income_usd * 148.013,
+                            ifelse(Country == "India", Total_Income_usd * 21.990,
+                              ifelse(Country == "Indonesia", Total_Income_usd * 4673.649,
+                                ifelse(Country == "Italy", Total_Income_usd * .663,
+                                  ifelse(Country == "Japan", Total_Income_usd * 102.835,
+                                    ifelse(Country == "Kenya", Total_Income_usd * 44,
+                                      ifelse(Country == "Malaysia", Total_Income_usd * 1.6,
+                                        ifelse(Country == "Mexico", Total_Income_usd * 9.522,
+                                          ifelse(Country == "Morocco", Total_Income_usd * 3.970,
+                                            ifelse(Country == "Netherlands", Total_Income_usd * .773,
+                                              ifelse(Country == "New Zealand", Total_Income_usd * 1.445,
+                                                ifelse(Country == "Nigeria", Total_Income_usd * 144.3,
+                                                  ifelse(Country == "Pakistan", Total_Income_usd * 38.7,
+                                                    ifelse(Country == "Panama", Total_Income_usd * .458,
+                                                      ifelse(Country == "Peru", Total_Income_usd * 1.742,
+                                                        ifelse(Country == "Philippines", Total_Income_usd * 19.511,
+                                                          ifelse(Country == "Poland", Total_Income_usd * 1.782,
+                                                            ifelse(Country == "Portugal", Total_Income_usd * .570,
+                                                              ifelse(Country == "Russia", Total_Income_usd * 25.881,
+                                                                ifelse(Country == "Serbia", Total_Income_usd * 41.126,
+                                                                  ifelse(Country == "Singapore", Total_Income_usd * .881,
+                                                                    ifelse(Country == "South Africa", Total_Income_usd * 6.933,
+                                                                      ifelse(Country == "South Korea", Total_Income_usd * 861.824,
+                                                                        ifelse(Country == "Spain", Total_Income_usd * .618,
+                                                                          ifelse(Country == "Sweden", Total_Income_usd * 8.765,
+                                                                            ifelse(Country == "Taiwan", Total_Income_usd * 13.34,
+                                                                              ifelse(Country == "Turkey", Total_Income_usd * 2.19,
+                                                                                ifelse(Country == "UK", Total_Income_usd * .700,
+                                                                                  ifelse(Country == "US", Total_Income_usd * 1,
+                                                                                    ifelse(Country == "Venezuela", Total_Income_usd * 2.7,
+                                                                                      ""
+                                                                                    )
+                                                                                  )
+                                                                                )
+                                                                              )
+                                                                            )
+                                                                          )
+                                                                        )
+                                                                      )
+                                                                    )
+                                                                  )
+                                                                )
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  ))
+
+```
+
+## Divide new PPP factor calculation by real exchange rate to get true PPP
+```{r}
+INCOMECLEAN2$PPP <- as.numeric(INCOMECLEAN2$PPP)
+
+INCOMECLEAN2 <- INCOMECLEAN2 %>%
+  mutate(PPP = ifelse(Country == "Argentina", PPP / 99,
+    ifelse(Country == "Australia", PPP / 1.33,
+      ifelse(Country == "Brazil", PPP / 5.63,
+        ifelse(Country == "Bolivia", PPP / 6.89,
+          ifelse(Country == "Canada", PPP / 1.23,
+            ifelse(Country == "China", PPP / 6.39,
+              ifelse(Country == "Columbia", PPP / 3782.26,
+                ifelse(Country == "Egypt", PPP / 15.70,
+                  ifelse(Country == "Finland", PPP / .85,
+                    ifelse(Country == "Germany", PPP / .85,
+                      ifelse(Country == "Greece", PPP / .85,
+                        ifelse(Country == "Hong Kong", PPP / 7.77,
+                          ifelse(Country == "Hungary", PPP / 311.77,
+                            ifelse(Country == "India", PPP / 74.84,
+                              ifelse(Country == "Indonesia", PPP / 14127.27,
+                                ifelse(Country == "Italy", PPP / .85,
+                                  ifelse(Country == "Japan", PPP / 113,
+                                    ifelse(Country == "Kenya", PPP / 111,
+                                      ifelse(Country == "Malaysia", PPP / 4.15,
+                                        ifelse(Country == "Mexico", PPP / 20.24,
+                                          ifelse(Country == "Morocco", PPP / 9.03,
+                                            ifelse(Country == "Netherlands", PPP / .85,
+                                              ifelse(Country == "New Zealand", PPP / 1.39,
+                                                ifelse(Country == "Nigeria", PPP / 410.75,
+                                                  ifelse(Country == "Pakistan", PPP / 173.58,
+                                                    ifelse(Country == "Panama", PPP / 1,
+                                                      ifelse(Country == "Peru", PPP / 3.95,
+                                                        ifelse(Country == "Philippines", PPP / 50.80,
+                                                          ifelse(Country == "Poland", PPP / 3.94,
+                                                            ifelse(Country == "Portugal", PPP / .85,
+                                                              ifelse(Country == "Russia", PPP / 71.15,
+                                                                ifelse(Country == "Serbia", PPP / 100,
+                                                                  ifelse(Country == "Singapore", PPP / 1.34,
+                                                                    ifelse(Country == "South Africa", PPP / 14.55,
+                                                                      ifelse(Country == "South Korea", PPP / 1177,
+                                                                        ifelse(Country == "Spain", PPP / .85,
+                                                                          ifelse(Country == "Sweden", PPP / 8.59,
+                                                                            ifelse(Country == "Taiwan", PPP / 27.87,
+                                                                              ifelse(Country == "Turkey", PPP / 9.43,
+                                                                                ifelse(Country == "UK", PPP / .72,
+                                                                                  ifelse(Country == "US", PPP / 1,
+                                                                                    ifelse(Country == "Venezuela", PPP / 418223.84,
+                                                                                      ""
+                                                                                    )
+                                                                                  )
+                                                                                )
+                                                                              )
+                                                                            )
+                                                                          )
+                                                                        )
+                                                                      )
+                                                                    )
+                                                                  )
+                                                                )
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  ))
+
+```
+
+
+
+
+
+```{r}
+INCOMECLEAN2 <- INCOMECLEAN2 %>% 
+  mutate(PPP = signif(PPP))
+  
+
+```
+
+
+
+
+## NOT RELEVANT CODE (FOR NOW)
+
+## income descriptive stats by country
+
+```{r}
+vars_for_table <- c("Income_1", "Income_2", "Income_3", "Income_4", "Country")
+CreateTableOne(vars = vars_for_table, data = dat2)
+```
+
+
