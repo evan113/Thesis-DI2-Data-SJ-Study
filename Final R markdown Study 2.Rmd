@@ -7,7 +7,7 @@ output: html_document
 
 ```{r}
 ## Set working directory----
-setwd("/Users/Evanvaldes1/Desktop/MASSEY/STUDY 2/CODE AND DATA")
+setwd("/Users/Evanvaldes1/Desktop/MASSEY/STUDY 2/CODE AND DATA/Thesis-DI2-Data-SJ-Study")
 ```
 
 ```{r}
