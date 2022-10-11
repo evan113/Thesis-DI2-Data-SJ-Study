@@ -295,24 +295,44 @@ dat2[ which(dat2$Income_4 != FALSE), "income_report" ] = "Annually"
 
 dat2$income_report <- factor(dat2$income_report, levels = c("Annually", "Monthly",
                                                             "Weekly", "Daily"))
+
 ```
 
 
 ## Bar plot of income reporting styles by country
 ```{r}
 library(forcats)
+library(RColorBrewer)
+
+## Removing NA values from income report
+dat2 <- dat2[!(is.na(dat2$income_report)), ]
  
-   ggplot(dat2, aes(x = Country, fill = income_report)) +
+ incomeplot <- ggplot(dat2, aes(x = Country, fill = income_report)) +
   geom_bar(width = 0.6, size = 0.6, alpha = 0.8, position = position_fill(reverse = TRUE)) +
-  scale_fill_discrete(
-    name = "Income Report",
-    labels = c("Annually", "Monthly", "Weekly", "Daily", "NA Missing Data")
+           scale_y_continuous(expand = expansion(0)) +
+  scale_fill_discrete(name = NULL,
+    labels = c("Annually", "Monthly", "Weekly", "Daily")
   ) +
+           scale_fill_manual(name = NULL,
+                             values = c(brewer.pal(4, "Dark2"))) +
   theme(
-    text = element_text(size = 10),
-    axis.text.x = element_text(angle = 90, hjust = 1, vjust = .2)
+          plot.margin = unit(c(1, 1, 1, 1), "cm"),
+    panel.background = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.ticks.x = element_blank(),
+          text = element_text(size = 10),
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = .2),
+    legend.background = element_rect(color = "black")
   ) +
-  labs(title = "Income Report Stacked Barplot")
+  labs(title = "Income Report Stacked Barplot",
+       x = "Country",
+       y = "Proportion"
+       ) 
+```
+
+## Save income report plot as a pdf file
+```{r}
+ggsave("incomereport_plot.pdf", plot = incomeplot)
 ```
 
 ## Changing income_report variable from character to numeric
@@ -762,6 +782,20 @@ vars_for_table <- c("age", "Gender")
 
 CreateTableOne(vars = vars_for_table, data = INCOMECLEAN)
 ```
+
+## Data exploration through visualization
+```{r}
+INCOMECLEAN %>%
+        ggplot(aes(x = Life_Satisfaction,
+                   y = System_Justification, 
+                   colour = Country)) +
+        geom_line()+
+        facet_wrap(~Region) +
+        labs(title = "System justification explained by inequality (GINI)",
+             x = "Inequality (GINI)",
+             y = "System justification")
+```
+
 
 ## Country grouped correlations 
 ```{r}
