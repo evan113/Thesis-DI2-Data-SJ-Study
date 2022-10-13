@@ -132,6 +132,7 @@ chart.Correlation(smallcla)
 apa.cor.table(smallcla, filename = "Countrylevelmoderators_DI2.doc")
 ```
 
+## BEGGINING OF DI2 DATA ANALYSES
 
 ## Full data - indvidual level analysis
 ```{r}
@@ -296,6 +297,9 @@ dat2[ which(dat2$Income_4 != FALSE), "income_report" ] = "Annually"
 dat2$income_report <- factor(dat2$income_report, levels = c("Annually", "Monthly",
                                                             "Weekly", "Daily"))
 
+dat2 <- dat2[!(is.na(dat2$income_report)), ]
+
+
 ```
 
 
@@ -304,9 +308,7 @@ dat2$income_report <- factor(dat2$income_report, levels = c("Annually", "Monthly
 library(forcats)
 library(RColorBrewer)
 
-## Removing NA values from income report
-dat2 <- dat2[!(is.na(dat2$income_report)), ]
- 
+
  incomeplot <- ggplot(dat2, aes(x = Country, fill = income_report)) +
   geom_bar(width = 0.6, size = 0.6, alpha = 0.8, position = position_fill(reverse = TRUE)) +
            scale_y_continuous(expand = expansion(0)) +
@@ -347,6 +349,8 @@ dat2$income_report2[dat2$income_report == "Monthly"] = "3"
 dat2$income_report2[dat2$income_report == "Annually"] = "4"
 
 dat2$income_report2 <- as.numeric(dat2$income_report2)
+dat2 <- dat2[!(is.na(dat2$income_report2)), ]
+
 ```
 
 ## Conspiracy theory graphs of interest
@@ -796,16 +800,6 @@ vars_for_table <- c("age", "Gender")
 CreateTableOne(vars = vars_for_table, data = INCOMECLEAN)
 ```
 
-## Visualizing income outliers
-```{r}
-boxplot(INCOMECLEAN$Total_Income_usd)
-
-INCOMECLEAN <- INCOMECLEAN %>%
-        filter(Total_Income_usd < 1000000)
-
-boxplot(INCOMECLEAN$Total_Income_usd)
-```
-
 
 ## Country grouped correlations 
 ```{r}
@@ -836,7 +830,7 @@ ddply(INCOMECLEAN, .(Country), summarise,
 
 ddply(INCOMECLEAN, .(Country), summarise,
       "corr" = cor(System_Justification,
-                   RegIncome, use = "complete.obs",
+                   income_percent, use = "complete.obs",
                    method = "pearson"))
 
 ```
@@ -942,6 +936,7 @@ INCOMECLEAN2 <- INCOMECLEAN %>%
     )
   ))
 
+
 INCOMECLEAN2$age <- as.numeric(INCOMECLEAN2$age)
 INCOMECLEAN2$System_Justification <- as.numeric(INCOMECLEAN2$System_Justification)
 INCOMECLEAN2$income_report2 <- as.numeric(INCOMECLEAN2$income_report2)
@@ -960,7 +955,7 @@ INCOMECLEAN2$Conspiracy_Theory <- as.numeric(INCOMECLEAN2$Conspiracy_Theory)
 ```{r, warning=FALSE}
 incomecor <- subset(INCOMECLEAN2, 
                     select = c(income_percent, LOGPPP, LOG10USDINCOME, 
-                               Life_Satisfaction, WellinSociety, income_report2,
+                               Life_Satisfaction, WellinSociety, RegIncome,
                                Conspiracy_Theory, System_Justification, 
                                FeelingThermometer_2, ClimateChange
 ))
@@ -973,7 +968,89 @@ chart.Correlation(incomecor)
 apa.cor.table(incomecor, filename = "INCOME_CORRELATIONS.doc", table.number = 1)
 ```
 
+## Individual Country specific correlations 
+```{r}
+
+## removing NA from income percent
+INCOMECLEAN2 <- INCOMECLEAN2[!(is.na(INCOMECLEAN2$income_percent)), ]
+
+
+ddply(INCOMECLEAN2, .(Country), summarise,
+      "corr" = cor(RegIncome,
+                   income_percent, use = "complete.obs",
+                   method = "pearson"))
+
+ddply(INCOMECLEAN2, .(Country), summarise,
+      "corr" = cor(income_percent,
+                   WellinSociety, use = "complete.obs",
+                   method = "pearson"))
+
+ddply(INCOMECLEAN2, .(Country), summarise,
+      "corr" = cor(income_percent,
+                   Life_Satisfaction, use = "complete.obs", 
+                   method = "pearson"))
+
+ddply(INCOMECLEAN2, .(Country), summarise,
+      "corr" = cor(System_Justification,
+                   income_percent, use = "complete.obs",
+                   method = "pearson"))
+
+
+ddply(INCOMECLEAN2, .(Country), summarise,
+      "corr" = cor(SDO, 
+                   income_percent, use = "complete.obs",
+                   method = "pearson"))
+
+ddply(INCOMECLEAN2, .(Country), summarise,
+      "corr" = cor(income_percent,
+                   FeelingThermometer_2, use = "complete.obs",
+                   method = "pearson"))
+
+
+ddply(INCOMECLEAN2, .(Country), summarise,
+      "corr" = cor(income_percent,
+                   GlobalTrustInventory_Knowledge, use = "complete.obs",
+                   method = "pearson"))
+
+ddply(INCOMECLEAN2, .(Country), summarise,
+      "corr" = cor(income_percent,
+                   Meaning_of_Life, use = "complete.obs",
+                   method = "pearson"))
+
+```
+
+## Writing data into SAV file to get country specifc correlations
+```{r}
+write_sav(INCOMECLEAN2, "Incomeclean2.sav")
+```
+
 ## INCOME SPECIFIC VISUALIZATION FOR STU
+
+## Visualizing income outliers
+```{r}
+boxplot(INCOMECLEAN2$Total_Income_usd)
+boxplot(INCOMECLEAN2$LOG10USDINCOME)
+
+INCOMECLEAN2 <- INCOMECLEAN2 %>%
+        filter(Total_Income_usd < 1000000)
+
+INCOMECLEAN2 <- INCOMECLEAN2 %>%
+        filter(LOG10USDINCOME < 15)
+
+boxplot(INCOMECLEAN2$Total_Income_usd)
+boxplot(INCOMECLEAN2$LOG10USDINCOME)
+```
+
+## Income and feelings towards poor people by political ideology
+```{r}
+
+INCOMECLEAN2 %>%
+        ggplot(aes(x = FeelingThermometer_2, y = income_percent,
+                   colour = PolOrientation)) +
+        geom_jitter() +
+        facet_wrap(~Country)
+    
+```
 
 ## Income Regularity and life satisfaction
 ```{r}
