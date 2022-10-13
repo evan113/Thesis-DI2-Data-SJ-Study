@@ -382,7 +382,7 @@ cor(dat2$Conspiracy_Theory, dat2$System_Justification, use = "complete.obs")
 ## Creating Social Mobility index
 ## Data accessed from https://www.weforum.org/reports/global-social-mobility-index-2020-why-economies-benefit-from-fixing-inequality/#country-rankings 
 ```{r}
-dat3 <- dat2 %>%
+dat2 <- dat2 %>%
   mutate(Social_Mobility = ifelse(Country == "Argentina", 57.3,
     ifelse(Country == "Australia", 75.1,
       ifelse(Country == "Brazil", 52.1,
@@ -473,7 +473,7 @@ dat3 <- dat2 %>%
 ## Adding GINI coeffcient scores (larger scores indicate greater inequality)
 ## Adding Freedom/Civil Liberty Scores (Larger scores indicate greater freedom)
 ```{r}
-dat4 <- dat3 %>%
+dat2 <- dat2 %>%
   mutate(GINI = ifelse(Country == "Argentina", 42.3,
     ifelse(Country == "Australia", 33.0,
       ifelse(Country == "Brazil", 48.9,
@@ -559,7 +559,7 @@ dat4 <- dat3 %>%
     )
   ))
 
-dat5 <- dat4 %>%
+dat2 <- dat2 %>%
   mutate(Freedom = ifelse(Country == "Argentina", 84,
     ifelse(Country == "Australia", 95,
       ifelse(Country == "Brazil", 73,
@@ -652,7 +652,7 @@ dat5 <- dat4 %>%
 ## Data collected from https://datacatalog.worldbank.org/search/dataset/0039819
 ## 0 = right, 1 = center, 2 = left
 ```{r}
-dat6 <- dat5 %>%
+dat2 <- dat2 %>%
   mutate(polpartypower = ifelse(Country == "Argentina", 2,
     ifelse(Country == "Australia", 2,
       ifelse(Country == "Brazil", 2,
@@ -741,15 +741,20 @@ dat6 <- dat5 %>%
 
 ## Making a subset of the data for income cleaning purposes
 ```{r}
-INCOMECLEAN <- subset(dat6, select = c(
+INCOMECLEAN <- subset(dat2, select = c(
   "Country", "Region" ,"age", "Gender", "PolOrientation", "Total_Income_usd", 
-  "PPP", "LOG10USDINCOME","RegIncome", "income_report", "income_report2", "Education", "WellinSociety", 
-  "Life_Satisfaction", "System_Justification", "Social_Mobility", "GINI", "Freedom",
-  "polpartypower"
+  "PPP", "LOG10USDINCOME", "LOGPPP","RegIncome", "income_report", 
+  "income_report2", "Education", "WellinSociety", 
+  "Life_Satisfaction", "Loneliness" ,"System_Justification", "SDO" ,"Social_Mobility", 
+  "GINI", "Freedom","polpartypower", "Conspiracy_Theory", "FeelingThermometer_1", 
+  "FeelingThermometer_2","GlobalTrustInventory_Knowledge", "ClimateChange", 
+  "Meaning_of_Life"
+  
 ))
 
 INCOMECLEAN$GINI <- as.numeric(INCOMECLEAN$GINI)
 INCOMECLEAN$LOG10USDINCOME <- as.numeric(INCOMECLEAN$LOG10USDINCOME)
+INCOMECLEAN$LOGPPP <- as.numeric(INCOMECLEAN$LOGPPP)
 INCOMECLEAN$Freedom <- as.numeric(INCOMECLEAN$Freedom)
 INCOMECLEAN$System_Justification <- as.numeric(INCOMECLEAN$System_Justification)
 INCOMECLEAN$PolOrientation <- as.numeric(INCOMECLEAN$PolOrientation)
@@ -761,6 +766,14 @@ INCOMECLEAN$Social_Mobility <- as.numeric(INCOMECLEAN$Social_Mobility)
 INCOMECLEAN$polpartypower <- as.numeric(INCOMECLEAN$polpartypower)
 INCOMECLEAN$age <- as.numeric(INCOMECLEAN$age)
 INCOMECLEAN$Gender <- as.factor(INCOMECLEAN$Gender)
+INCOMECLEAN$Conspiracy_Theory <- as.numeric(INCOMECLEAN$Conspiracy_Theory)
+INCOMECLEAN$SDO <- as.numeric(INCOMECLEAN$SDO)
+INCOMECLEAN$Loneliness <- as.numeric(INCOMECLEAN$Loneliness)
+INCOMECLEAN$FeelingThermometer_1 <- as.numeric(INCOMECLEAN$FeelingThermometer_1)
+INCOMECLEAN$FeelingThermometer_2 <- as.numeric(INCOMECLEAN$FeelingThermometer_2)
+INCOMECLEAN$GlobalTrustInventory_Knowledge <- as.numeric(INCOMECLEAN$GlobalTrustInventory_Knowledge)
+INCOMECLEAN$ClimateChange <- as.numeric(INCOMECLEAN$ClimateChange)
+INCOMECLEAN$Meaning_of_Life <- as.numeric(INCOMECLEAN$Meaning_of_Life)
 ```
 
 ## Demographic descriptives (Age and Gender) of total sample
@@ -783,17 +796,14 @@ vars_for_table <- c("age", "Gender")
 CreateTableOne(vars = vars_for_table, data = INCOMECLEAN)
 ```
 
-## Data exploration through visualization
+## Visualizing income outliers
 ```{r}
-INCOMECLEAN %>%
-        ggplot(aes(x = Life_Satisfaction,
-                   y = System_Justification, 
-                   colour = Country)) +
-        geom_line()+
-        facet_wrap(~Region) +
-        labs(title = "System justification explained by inequality (GINI)",
-             x = "Inequality (GINI)",
-             y = "System justification")
+boxplot(INCOMECLEAN$Total_Income_usd)
+
+INCOMECLEAN <- INCOMECLEAN %>%
+        filter(Total_Income_usd < 1000000)
+
+boxplot(INCOMECLEAN$Total_Income_usd)
 ```
 
 
@@ -841,36 +851,257 @@ chart.Correlation(smallcor)
 ```
 
 
+## CREATING INCOME PERCENT
 
-## ## Correlations between total income variables and perception of 
-## income stability and SJ after converting income to USD %
 ```{r}
-INCOMECLEAN2$income_percent = NA
-INCOMECLEAN2$income_percent <- rank(INCOMECLEAN2$Total_Income_usd)/length(INCOMECLEAN2$Total_Income_usd)*100
+INCOMECLEAN$income_percent = NA
 
-INCOMECLEAN2$Gender <- as.numeric(INCOMECLEAN2$Gender)
+INCOMECLEAN2 <- INCOMECLEAN %>%
+  mutate(income_percent = ifelse(Country == "Argentina", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+    ifelse(Country == "Australia", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+      ifelse(Country == "Brazil", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+        ifelse(Country == "Bolivia", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+          ifelse(Country == "Canada", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+            ifelse(Country == "China", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+              ifelse(Country == "Columbia", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                ifelse(Country == "Egypt", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                  ifelse(Country == "Finland", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                    ifelse(Country == "Germany", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                      ifelse(Country == "Greece", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                        ifelse(Country == "Hong Kong", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                          ifelse(Country == "Hungary", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                            ifelse(Country == "India", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                              ifelse(Country == "Indonesia", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                ifelse(Country == "Italy", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                  ifelse(Country == "Japan", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                    ifelse(Country == "Kenya", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                      ifelse(Country == "Malaysia", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                        ifelse(Country == "Mexico", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                          ifelse(Country == "Morocco", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                            ifelse(Country == "Netherlands", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                              ifelse(Country == "New Zealand", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                                ifelse(Country == "Nigeria", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                                  ifelse(Country == "Pakistan", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                                    ifelse(Country == "Panama", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                                      ifelse(Country == "Peru", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                                        ifelse(Country == "Philippines", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                                          ifelse(Country == "Poland", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                                            ifelse(Country == "Portugal", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                                              ifelse(Country == "Russia", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                                                ifelse(Country == "Serbia", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                                                  ifelse(Country == "Singapore", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                                                    ifelse(Country == "South Africa", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                                                      ifelse(Country == "South Korea", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                                                        ifelse(Country == "Spain", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                                                          ifelse(Country == "Sweden", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                                                            ifelse(Country == "Taiwan", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                                                              ifelse(Country == "Turkey", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                                                                ifelse(Country == "UK", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                                                                  ifelse(Country == "US", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                                                                    ifelse(Country == "Venezuela", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
+                                                                                           "")
+                                                                                  )
+                                                                                )
+                                                                              )
+                                                                            )
+                                                                          )
+                                                                        )
+                                                                      )
+                                                                    )
+                                                                  )
+                                                                )
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  ))
+
 INCOMECLEAN2$age <- as.numeric(INCOMECLEAN2$age)
+INCOMECLEAN2$System_Justification <- as.numeric(INCOMECLEAN2$System_Justification)
+INCOMECLEAN2$income_report2 <- as.numeric(INCOMECLEAN2$income_report2)
+INCOMECLEAN2$RegIncome <- as.numeric(INCOMECLEAN2$RegIncome)
 INCOMECLEAN2$PolOrientation <- as.numeric(INCOMECLEAN2$PolOrientation)
 INCOMECLEAN2$Education <- as.numeric(INCOMECLEAN2$Education)
 INCOMECLEAN2$WellinSociety <- as.numeric(INCOMECLEAN2$WellinSociety)
 INCOMECLEAN2$income_percent <- as.numeric(INCOMECLEAN2$income_percent)
-INCOMECLEAN2$RegIncome <- as.numeric(INCOMECLEAN2$RegIncome)
-INCOMECLEAN2$Rel_Mobility <- as.numeric(INCOMECLEAN2$Rel_Mobility)
-INCOMECLEAN2$System_Justification <- as.numeric(INCOMECLEAN2$System_Justification)
-INCOMECLEAN2$Identity2 <- as.numeric(INCOMECLEAN2$Identity2)
-INCOMECLEAN2$GlobalTrustInventory_GVT <- as.numeric(INCOMECLEAN2$GlobalTrustInventory_GVT)
-INCOMECLEAN2$income_report2 <- as.numeric(INCOMECLEAN2$income_report2)
+INCOMECLEAN2$Conspiracy_Theory <- as.numeric(INCOMECLEAN2$Conspiracy_Theory)
 
-incomecor <- subset(INCOMECLEAN2, select = c(
-  income_percent, RegIncome, income_report2, Education, WellinSociety, PolOrientation,
-  Life_Satisfaction, Conspiracy_Theory, GlobalTrustInventory_GVT,
-  System_Justification, Gender, age, Identity2, Rel_Mobility  
+```
+
+## ## Correlations between total income variables and perception of 
+## income stability and SJ after converting income to USD %
+
+```{r, warning=FALSE}
+incomecor <- subset(INCOMECLEAN2, 
+                    select = c(income_percent, LOGPPP, LOG10USDINCOME, 
+                               Life_Satisfaction, WellinSociety, income_report2,
+                               Conspiracy_Theory, System_Justification, 
+                               FeelingThermometer_2, ClimateChange
 ))
 
 chart.Correlation(incomecor)
 ```
 
+## Writing income correlation to word
+```{r}
+apa.cor.table(incomecor, filename = "INCOME_CORRELATIONS.doc", table.number = 1)
+```
 
+## INCOME SPECIFIC VISUALIZATION FOR STU
+
+## Income Regularity and life satisfaction
+```{r}
+INCOMECLEAN2$income_report2 <- as.factor(INCOMECLEAN2$income_report2)
+INCOMECLEAN2 <- INCOMECLEAN2[!(is.na(INCOMECLEAN2$income_report2)), ]
+
+
+INCOMECLEAN2 %>%
+        ggplot(aes(x = Total_Income_usd, y = Life_Satisfaction, 
+                   colour = income_report)) +
+        geom_jitter(size = 1) +
+        xlim(0, 100000) +
+        facet_wrap(~Country) +
+        theme(
+    panel.background = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.ticks.x = element_blank(),
+          text = element_text(size = 10),
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = .2),
+    legend.background = element_rect(color = "black")
+  ) +
+        labs(title = "Relationship between income and life satisfaction",
+             x = "income",
+             y = "life satisfaction")
+
+```
+
+## Violin plot of income density by region
+```{r}
+INCOMECLEAN2$PolOrientation <- as.factor(INCOMECLEAN2$PolOrientation)
+
+violinplot <- INCOMECLEAN2 %>%
+        ggplot(aes(x = Region, y = LOG10USDINCOME, 
+                   fill = Region)) +
+        geom_violin() +
+        geom_dotplot(binaxis = "y", binwidth = 0.01, 
+                     stackdir = "center") +
+        theme(
+    panel.background = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.ticks.x = element_blank(),
+          text = element_text(size = 10),
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = .2),
+    legend.background = element_rect(color = "black")
+  )+
+        labs(title = "Income density by region",
+             x = "Region",
+             y = "Income")
+```
+
+## Saving violin plot of income density by region
+```{r}
+ggsave("income_density.pdf", plot = violinplot)
+```
+
+## Income and life satisfaction by Country
+```{r}
+ income_lifesat <- INCOMECLEAN %>%
+        ggplot(aes(x = LOG10USDINCOME,
+                   y = Life_Satisfaction,
+                   colour = income_report2)) +
+        geom_jitter()+
+        geom_abline(intercept = 3.6, slope = 0.06) +
+        facet_wrap(~Country) +
+        ylim(0, 7) +
+        xlim(-4, 7) +
+        scale_color_gradient(low = "red", high = "green", 
+                             labels = c("Daily", "Weekly", "Monthly", "Annually")) +
+  theme(
+    panel.background = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.ticks.x = element_blank(),
+          text = element_text(size = 10),
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = .2),
+    legend.background = element_rect(color = "black")
+  ) +
+        labs(title = "LIFE SATISFACTION EXPLAINED BY INCOME",
+             x = "Income",
+             y = "Life satisfaction",
+             fill = "Income Regularity")
+```
+
+## Saving Income and life satisfaction by Country
+```{r}
+ggsave("income_lifesat.pdf", plot = income_lifesat)
+```
+
+```{r}
+INCOMECLEAN2 %>%
+        ggplot(aes(x = LOG10USDINCOME,
+                   y = Life_Satisfaction,
+                   colour = PolOrientation)) +
+        geom_jitter()+
+        geom_abline(intercept = 3.6, slope = 0.06) +
+        facet_wrap(~Country) +
+        ylim(0, 7) +
+        xlim(-4, 7) +
+        scale_color_gradient(low = "red", high = "green") +
+  theme(
+    panel.background = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.ticks.x = element_blank(),
+          text = element_text(size = 10),
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = .2),
+    legend.background = element_rect(color = "black")
+  ) +
+        labs(title = "LIFE SATISFACTION EXPLAINED BY INCOME",
+             x = "Income",
+             y = "Life satisfaction",
+             fill = "Political Orientation")
+```
+
+## Income Regularity and life satisfaction
+```{r}
+INCOMECLEAN2$income_report2 <- as.numeric(INCOMECLEAN2$income_report2)
+
+INCOMECLEAN2 %>% 
+        ggplot(aes(x = Life_Satisfaction,
+                   y = income_report2, 
+                   colour = PolOrientation)) +
+        geom_jitter(size = 1) +
+        facet_wrap(~Country) +
+        xlim(0, 10) +
+        ylim(0, 5) +
+        labs(title = "LIFE SATISFACTION EXPLAINED BY INCOME REGULARITY",
+             x = "Life satisfaction",
+             y = "Income Regularity")
+```
 
 
 
@@ -879,19 +1110,44 @@ chart.Correlation(incomecor)
 INCOMECLEAN2 <- INCOMECLEAN2 %>% 
   mutate(PPP = signif(PPP))
   
-
 ```
 
 
+## Using Density / heatmaps to reveal structure in income data
+```{r}
+library(gridExtra)
+library(colorspace)
 
+p = ggplot(INCOMECLEAN2, aes(x = LOG10USDINCOME, y = Life_Satisfaction)) +
+        ggtitle("Plot of income and life sat") +
+        xlab("Income") +
+        ylab("Life Satisfaction")
 
-## NOT RELEVANT CODE (FOR NOW)
+p1 = p +
+        geom_point(alpha = 0.01, colour = "orange") +
+        geom_density2d() +
+        theme_bw()
 
-## income descriptive stats by country
+p2 = p +
+        stat_bin_hex(colour = "white", na.rm = T) +
+        scale_fill_gradientn(colours = c("purple", "green"),
+                             name = "Frequency",
+                             na.value = NA)
+
+grid.arrange(p1, p2, ncol = 2)
+```
 
 ```{r}
-vars_for_table <- c("Income_1", "Income_2", "Income_3", "Income_4", "Country")
-CreateTableOne(vars = vars_for_table, data = dat2)
+library(RColorBrewer)
+buylrd = c("#313695", "#4575B4", "#74ADD1", "#ABD9E9", "#E0F3F8", "#FFFFBF",
+           "#FEE090", "#FDAE61", "#F46D43", "#D73027", "#A50026") 
+myColRamp = colorRampPalette(c(buylrd))
+
+## Smoothed scatterplot
+smoothScatter(x = INCOMECLEAN2$LOG10USDINCOME, y = INCOMECLEAN2$Life_Satisfaction,
+              colramp = myColRamp)
 ```
+
+
 
 
