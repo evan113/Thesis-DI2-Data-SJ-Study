@@ -38,7 +38,7 @@ library(interactions)
 library(jtools)
 library(mice)
 library(BaylorEdPsych)
-library(lme4)
+library(lme4) ## Multilevel regression modeling
 library(styler)
 library(readxl)
 library(plm)
@@ -51,87 +51,10 @@ library(mlma) # Multilevel mediation analysis
 ## Opening indvidual and country level data
 ```{r}
 full_evan_dataset <- read_sav("Full Evan Dataset.zip")
-
-countrylevelanalysis <- read_sav("Country level analysis for DI2.zip")
-
 ```
 
-## Attaching country names to country level analysis DS
-```{r}
-countrylevelanalysis$Country <- as.character(countrylevelanalysis$Country)
-countrylevelanalysis$Country[countrylevelanalysis$Country == 1] <- "Argentina"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 2] <- "Australia"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 3] <- "Bolivia"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 4] <- "Brazil"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 5] <- "Canada"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 6] <- "China"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 7] <- "Colombia"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 8] <- "Egypt"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 9] <- "Finland"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 10] <- "Germany"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 11] <- "Greece"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 12] <- "Hong Kong"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 13] <- "Hungary"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 14] <- "India"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 15] <- "Indonesia"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 16] <- "Italy"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 17] <- "Japan"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 18] <- "Kenya"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 19] <- "Malaysia"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 20] <- "Mexico"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 21] <- "Morocco"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 22] <- "Netherlands"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 23] <- "New Zealand"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 24] <- "Nigeria"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 25] <- "Pakistan"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 26] <- "Panama"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 27] <- "Peru"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 28] <- "Philippines"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 29] <- "Poland"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 30] <- "Portugal"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 31] <- "Russia"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 32] <- "Serbia"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 33] <- "Singapore"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 34] <- "South Africa"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 35] <- "South Korea"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 36] <- "Spain"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 37] <- "Sweden"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 38] <- "Taiwan"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 39] <- "Turkey"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 40] <- "UK"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 41] <- "US"
-countrylevelanalysis$Country[countrylevelanalysis$Country == 42] <- "Venezuela"
 
-countrylevelanalysis$Country <- as.factor(countrylevelanalysis$Country)
-```
-
-## Assigning Venezuela GDP_PPP according to https://data.worldbank.org/indicator/NY.GDP.PCAP.PP.CD?locations=VE
-```{r}
-countrylevelanalysis$GDP_PPP[countrylevelanalysis$Country %in% "Venezuela"] <- "4500"
-```
-
-## Groupwise correlation
-```{r}
-smallcla <- subset(countrylevelanalysis, select = c(
-  "System_Justification", "GDP_PPP", "GINI_UN",
-  "Democracy_Index", "Factionalized_Elites",
-  "State_Legitimacy_Index", "Ind_Col","Life_Satisfaction"
-))
-
-smallcla$System_Justification <- as.numeric(smallcla$System_Justification)
-smallcla$GDP_PPP <- as.numeric(smallcla$GDP_PPP)
-smallcla$GINI_UN <- as.numeric(smallcla$GINI_UN)
-smallcla$Democracy_Index <- as.numeric(smallcla$Democracy_Index)
-smallcla$Factionalized_Elites <- as.numeric(smallcla$Factionalized_Elites)
-smallcla$State_Legitimacy_Index <- as.numeric(smallcla$State_Legitimacy_Index)
-smallcla$Ind_Col <- as.numeric(smallcla$Ind_Col)
-smallcla$Life_Satisfaction <- as.numeric(smallcla$Life_Satisfaction)
-
-chart.Correlation(smallcla)
-
-apa.cor.table(smallcla, filename = "Countrylevelmoderators_DI2.doc")
-```
-
+## _______________________________________________________________________
 ## BEGGINING OF DI2 DATA ANALYSES
 
 ## Full data - indvidual level analysis
@@ -271,6 +194,8 @@ which(is.na(dat2$Country))
 
 ## Removing missing values from the country column
 dat2 <- dat2[!(is.na(dat2$Country)), ]
+
+## DON'T RUN FOR NOW
 dat2 <- dat2[!(is.na(dat2$PolOrientation)), ]
 dat2 <- dat2[!(is.na(dat2$Conspiracy_Theory)), ]
 ```
@@ -297,6 +222,7 @@ dat2[ which(dat2$Income_4 != FALSE), "income_report" ] = "Annually"
 dat2$income_report <- factor(dat2$income_report, levels = c("Annually", "Monthly",
                                                             "Weekly", "Daily"))
 
+## DONT RUN FOR NOW
 dat2 <- dat2[!(is.na(dat2$income_report)), ]
 
 
@@ -349,6 +275,8 @@ dat2$income_report2[dat2$income_report == "Monthly"] = "3"
 dat2$income_report2[dat2$income_report == "Annually"] = "4"
 
 dat2$income_report2 <- as.numeric(dat2$income_report2)
+
+## DON'T RUN FOR NOW
 dat2 <- dat2[!(is.na(dat2$income_report2)), ]
 
 ```
@@ -393,7 +321,7 @@ dat2 <- dat2 %>%
         ifelse(Country == "Bolivia", 48.2,
           ifelse(Country == "Canada", 76.1,
             ifelse(Country == "China", 61.5,
-              ifelse(Country == "Columbia", 59.3,
+              ifelse(Country == "Colombia", 59.3,
                 ifelse(Country == "Egypt", 44.8,
                   ifelse(Country == "Finland", 83.6,
                     ifelse(Country == "Germany", 78.8,
@@ -471,7 +399,6 @@ dat2 <- dat2 %>%
       )
     )
   ))
-
 ```
 
 ## Adding GINI coeffcient scores (larger scores indicate greater inequality)
@@ -484,7 +411,7 @@ dat2 <- dat2 %>%
         ifelse(Country == "Bolivia", 43.6,
           ifelse(Country == "Canada", 33.0,
             ifelse(Country == "China", 48.0,
-              ifelse(Country == "Columbia", 54.2,
+              ifelse(Country == "Colombia", 54.2,
                 ifelse(Country == "Egypt", 31.0,
                   ifelse(Country == "Finland", 27.0,
                     ifelse(Country == "Germany", 31.0,
@@ -570,7 +497,7 @@ dat2 <- dat2 %>%
         ifelse(Country == "Bolivia", 66,
           ifelse(Country == "Canada", 98,
             ifelse(Country == "China", 9,
-              ifelse(Country == "Columbia", 64,
+              ifelse(Country == "Colombia", 64,
                 ifelse(Country == "Egypt", 18,
                   ifelse(Country == "Finland", 100,
                     ifelse(Country == "Germany", 94,
@@ -648,7 +575,6 @@ dat2 <- dat2 %>%
       )
     )
   ))
-
 ```
 
 
@@ -663,7 +589,7 @@ dat2 <- dat2 %>%
         ifelse(Country == "Bolivia", 2,
           ifelse(Country == "Canada", 0,
             ifelse(Country == "China", 2,
-              ifelse(Country == "Columbia", 0,
+              ifelse(Country == "Colombia", 0,
                 ifelse(Country == "Egypt", 1,
                   ifelse(Country == "Finland", 0,
                     ifelse(Country == "Germany", 0,
@@ -746,18 +672,23 @@ dat2 <- dat2 %>%
 ## Making a subset of the data for income cleaning purposes
 ```{r}
 INCOMECLEAN <- subset(dat2, select = c(
-  "Country", "Region" ,"age", "Gender", "PolOrientation", "Total_Income_usd", 
-  "PPP", "LOG10USDINCOME", "LOGPPP","RegIncome", "income_report", 
-  "income_report2", "Education", "WellinSociety", 
-  "Life_Satisfaction", "Loneliness" ,"System_Justification", "SDO" ,"Social_Mobility", 
-  "GINI", "Freedom","polpartypower", "Conspiracy_Theory", "FeelingThermometer_1", 
-  "FeelingThermometer_2","GlobalTrustInventory_Knowledge", "ClimateChange", 
-  "Meaning_of_Life"
-  
+  "Country", "Region", "age", "Gender", "PolOrientation", "Total_Income_usd",
+  "PPP", "LOG10USDINCOME", "LOGPPP", "income_percent", "RegIncome", "income_report",
+  "income_report2", "Education", "WellinSociety", "LifeSatisfatction_1", 
+  "LifeSatisfatction_2", "Life_Satisfaction", "SJ1", "SJ2", "SJ3", "SJ4", 
+  "System_Justification", "SDO", "Social_Mobility",
+  "GINI", "Freedom", "polpartypower", "Conspiracy_Theory", "FeelingThermometer_1",
+  "FeelingThermometer_2", "GlobalTrustInventory_Knowledge", "ClimateChange",
+  "Meaning_of_Life", "Loneliness", "Subjectivewellbeing1", "Subjectivewellbeing2", "Subjectivewellbeing3",
+  "Subjectivewellbeing4", "Subjectivewellbeing5", "Subjectivewellbeing6", "Subjectivewellbeing7",
+  "Subjwellbeing8", "Subjwellbeing9", "Subjewellbeing10", "Subjectivewellbeig11",
+  "Subjwellbeing12", "Subjwellbeing13", "Subjwellbeing14", "Subjwellbeing15",
+  "Global_SelfAssessedH", "Identity2"
 ))
 
 INCOMECLEAN$GINI <- as.numeric(INCOMECLEAN$GINI)
 INCOMECLEAN$LOG10USDINCOME <- as.numeric(INCOMECLEAN$LOG10USDINCOME)
+INCOMECLEAN$Identity2 <- as.numeric(INCOMECLEAN$Identity2)
 INCOMECLEAN$LOGPPP <- as.numeric(INCOMECLEAN$LOGPPP)
 INCOMECLEAN$Freedom <- as.numeric(INCOMECLEAN$Freedom)
 INCOMECLEAN$System_Justification <- as.numeric(INCOMECLEAN$System_Justification)
@@ -778,174 +709,217 @@ INCOMECLEAN$FeelingThermometer_2 <- as.numeric(INCOMECLEAN$FeelingThermometer_2)
 INCOMECLEAN$GlobalTrustInventory_Knowledge <- as.numeric(INCOMECLEAN$GlobalTrustInventory_Knowledge)
 INCOMECLEAN$ClimateChange <- as.numeric(INCOMECLEAN$ClimateChange)
 INCOMECLEAN$Meaning_of_Life <- as.numeric(INCOMECLEAN$Meaning_of_Life)
+INCOMECLEAN$SJ1 <- as.numeric(INCOMECLEAN$SJ1)
+INCOMECLEAN$SJ2 <- as.numeric(INCOMECLEAN$SJ2)
+INCOMECLEAN$SJ3 <- as.numeric(INCOMECLEAN$SJ3)
+INCOMECLEAN$SJ4 <- as.numeric(INCOMECLEAN$SJ4)
+INCOMECLEAN$LifeSatisfatction_1 <- as.numeric(INCOMECLEAN$LifeSatisfatction_1)
+INCOMECLEAN$LifeSatisfatction_2 <- as.numeric(INCOMECLEAN$LifeSatisfatction_2)
 ```
+
+## Creating a general subjective wellbeing item
+```{r}
+INCOMECLEAN <- INCOMECLEAN %>%
+  mutate(gensubwellbeing = Subjectivewellbeing1 + Subjectivewellbeing2 +
+    Subjectivewellbeing3 + Subjectivewellbeing4 + Subjectivewellbeing5 +
+    Subjectivewellbeing6 + Subjectivewellbeing7 + Subjwellbeing8 +
+    Subjwellbeing9 + Subjewellbeing10 + Subjectivewellbeig11 +
+    Subjwellbeing12 + Subjwellbeing13 + Subjwellbeing14 + Subjwellbeing15)
+
+```
+
 
 ## Demographic descriptives (Age and Gender) of total sample
 ```{r}
+## RUN THIS LINE OF CODE WHEN ONLY GETTING DESCRIPTIVES (REMOVING GENDER NA'S)
+INCOMECLEAN <- INCOMECLEAN[!(is.na(INCOMECLEAN$Gender)), ]
 
-## Creating descriptives for demographics
-INCOMECLEAN$Gender <- factor(INCOMECLEAN$Gender, levels = c(1, 2),
-                             labels = c("Male", "Female"))
+INCOMECLEAN$Gender2 <- factor(INCOMECLEAN$Gender, levels = c(1, 2),
+                              labels = c("Male", "Female"))
 
 label(INCOMECLEAN$age) <- "Age"
-label(INCOMECLEAN$Gender) <- "Gender"
+label(INCOMECLEAN$Gender2) <- "Gender"
 
-summary(INCOMECLEAN$Gender)
+
+## Creating descriptives for demographics
+
+
+summary(INCOMECLEAN$Gender2)
 mean(INCOMECLEAN$age, na.rm = T)
 sd(INCOMECLEAN$age, na.rm = T)
 
 attach(INCOMECLEAN)
-vars_for_table <- c("age", "Gender")
+vars_for_table <- c("age", "Gender2")
 
 CreateTableOne(vars = vars_for_table, data = INCOMECLEAN)
 ```
 
-
-## Country grouped correlations 
+## Calculating Cronbach's Alpha for SJ and life satisfaction scales
 ```{r}
-ddply(INCOMECLEAN, .(Country), summarise,
-      "corr" = cor(System_Justification, 
-                   Life_Satisfaction, use = "complete.obs",
-                   method = "pearson"))
+library(ltm)
 
-ddply(INCOMECLEAN, .(Country), summarise,
-      "corr" = cor(System_Justification,
-                   WellinSociety, use = "complete.obs",
-                   method = "pearson"))
+cronbachalphaSJ <- subset(INCOMECLEAN,
+                          select = c(SJ1, SJ2, SJ3, SJ4))
 
-ddply(INCOMECLEAN, .(Country), summarise,
-      "corr" = cor(System_Justification,
-                   LOG10USDINCOME, use = "complete.obs",
-                   method = "pearson"))
+cronbach.alpha(cronbachalphaSJ, na.rm = T)
 
-ddply(INCOMECLEAN, .(Country), summarise,
-      "corr" = cor(System_Justification,
-                   Education, use = "complete.obs",
-                   method = "pearson"))
+cronbachalphaLS <- subset(INCOMECLEAN,
+                         select = c(LifeSatisfatction_1, LifeSatisfatction_2))
 
-ddply(INCOMECLEAN, .(Country), summarise,
-      "corr" = cor(System_Justification,
-                   PolOrientation, use = "complete.obs",
-                   method = "pearson"))
-
-ddply(INCOMECLEAN, .(Country), summarise,
-      "corr" = cor(System_Justification,
-                   income_percent, use = "complete.obs",
-                   method = "pearson"))
-
+cronbach.alpha(cronbachalphaLS, na.rm = T)
 ```
 
+## Individual-level system justification correlations by country
 ```{r}
-smallcor <- subset(INCOMECLEAN, select = c("System_Justification", "Total_Income_usd",
-                                           "Education", "WellinSociety", "PolOrientation" ,"Life_Satisfaction",
-                                           "Social_Mobility", "GINI", "Freedom", "polpartypower"))
+## log Income
+INCOMECLEAN %>%
+        group_by(Country) %>%
+        drop_na(LOG10USDINCOME) %>%
+        do(data.frame(correlation = cor(.$System_Justification, .$LOG10USDINCOME, method = "pearson"),
+                      pvalue = cor.test(.$System_Justification, .$LOG10USDINCOME)$p.value))
+
+## income percent 
+INCOMECLEAN %>%
+        group_by(Country) %>%
+        drop_na(LOG10USDINCOME) %>%
+        do(data.frame(correlation = cor(.$System_Justification, .$income_percent, method = "pearson"),
+                      pvalue = cor.test(.$System_Justification, .$income_percent)$p.value))
+
+## Income regularity
+INCOMECLEAN %>%
+        group_by(Country) %>%
+        drop_na(RegIncome) %>%
+        do(data.frame(correlation = cor(.$System_Justification, .$RegIncome, method = "pearson"),
+                      pvalue = cor.test(.$System_Justification, .$RegIncome)$p.value))
+
+## Education
+INCOMECLEAN %>%
+        group_by(Country) %>%
+        drop_na(LOG10USDINCOME) %>%
+        do(data.frame(correlation = cor(.$System_Justification, .$Education, method = "pearson"),
+                      pvalue = cor.test(.$System_Justification, .$Education)$p.value))
+
+## Subjective SES
+INCOMECLEAN %>%
+        group_by(Country) %>%
+        drop_na(LOG10USDINCOME) %>%
+        do(data.frame(correlation = cor(.$System_Justification, .$WellinSociety, method = "pearson"),
+                      pvalue = cor.test(.$System_Justification, .$WellinSociety)$p.value))
+
+## Political orientation
+INCOMECLEAN %>%
+        group_by(Country) %>%
+        drop_na(PolOrientation) %>%
+        do(data.frame(correlation = cor(.$System_Justification, .$PolOrientation, method = "pearson"),
+                      pvalue = cor.test(.$System_Justification, .$PolOrientation)$p.value))
+
+## Life Satisfaction
+INCOMECLEAN %>%
+        group_by(Country) %>%
+        drop_na(Life_Satisfaction) %>%
+        do(data.frame(correlation = cor(.$System_Justification, .$Life_Satisfaction, method = "pearson"),
+                      pvalue = cor.test(.$System_Justification, .$Life_Satisfaction)$p.value))
+
+## National Identity
+INCOMECLEAN %>%
+        group_by(Country) %>%
+        drop_na(Identity2) %>%
+        do(data.frame(correlation = cor(.$System_Justification, .$Identity2, method = "pearson"),
+                      pvalue = cor.test(.$System_Justification, .$Identity2)$p.value))
+```
+
+## Country-level correlations (N = 42)
+```{r, warning=FALSE}
+smallcor <- subset(INCOMECLEAN, select = c("System_Justification", "LOG10USDINCOME",
+                                           "Education", "WellinSociety", "PolOrientation", 
+                                           "Life_Satisfaction", "GINI", "Freedom",
+                                           "Social_Mobility", "polpartypower"))
 
 chart.Correlation(smallcor)
 
+apa.cor.table(smallcor, filename = "Country_level_correlations.doc")
+
+apa.cor.table(incomecor, filename = "INCOME_CORRELATIONS.doc", table.number = 1)
+
+
 ```
 
 
-## CREATING INCOME PERCENT
 
+
+## Measurement equivalence of SJ items 
+## CFA USING LAVAAN
 ```{r}
-INCOMECLEAN$income_percent = NA
+## Overall model
+## We may have to drop SJ1 - leads to poor fit indices
+## Better fitting model is a 4 factor model with SJ1 removed for better fit
 
-INCOMECLEAN2 <- INCOMECLEAN %>%
-  mutate(income_percent = ifelse(Country == "Argentina", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-    ifelse(Country == "Australia", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-      ifelse(Country == "Brazil", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-        ifelse(Country == "Bolivia", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-          ifelse(Country == "Canada", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-            ifelse(Country == "China", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-              ifelse(Country == "Columbia", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                ifelse(Country == "Egypt", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                  ifelse(Country == "Finland", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                    ifelse(Country == "Germany", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                      ifelse(Country == "Greece", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                        ifelse(Country == "Hong Kong", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                          ifelse(Country == "Hungary", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                            ifelse(Country == "India", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                              ifelse(Country == "Indonesia", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                ifelse(Country == "Italy", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                  ifelse(Country == "Japan", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                    ifelse(Country == "Kenya", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                      ifelse(Country == "Malaysia", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                        ifelse(Country == "Mexico", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                          ifelse(Country == "Morocco", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                            ifelse(Country == "Netherlands", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                              ifelse(Country == "New Zealand", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                                ifelse(Country == "Nigeria", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                                  ifelse(Country == "Pakistan", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                                    ifelse(Country == "Panama", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                                      ifelse(Country == "Peru", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                                        ifelse(Country == "Philippines", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                                          ifelse(Country == "Poland", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                                            ifelse(Country == "Portugal", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                                              ifelse(Country == "Russia", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                                                ifelse(Country == "Serbia", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                                                  ifelse(Country == "Singapore", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                                                    ifelse(Country == "South Africa", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                                                      ifelse(Country == "South Korea", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                                                        ifelse(Country == "Spain", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                                                          ifelse(Country == "Sweden", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                                                            ifelse(Country == "Taiwan", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                                                              ifelse(Country == "Turkey", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                                                                ifelse(Country == "UK", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                                                                  ifelse(Country == "US", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                                                                    ifelse(Country == "Venezuela", rank(INCOMECLEAN$Total_Income_usd)/length(INCOMECLEAN$Total_Income_usd)*100,
-                                                                                           "")
-                                                                                  )
-                                                                                )
-                                                                              )
-                                                                            )
-                                                                          )
-                                                                        )
-                                                                      )
-                                                                    )
-                                                                  )
-                                                                )
-                                                              )
-                                                            )
-                                                          )
-                                                        )
-                                                      )
-                                                    )
-                                                  )
-                                                )
-                                              )
-                                            )
-                                          )
-                                        )
-                                      )
-                                    )
-                                  )
-                                )
-                              )
-                            )
-                          )
-                        )
-                      )
-                    )
-                  )
-                )
-              )
-            )
-          )
-        )
-      )
-    )
-  ))
+## Paper to read about RMSEA issues and their commonality
+## Kenny, Kaniskan, and Mccoach, 2015
+## Main take away - For models with small df, the RMSEA can exceed cutoffs
+## very often, even when the model is correctly specified
+## Kenny et al. (2015) recommends checking alternative models with additional paths
+## Following Kenny et al. (2015) recs, I increased the size of the model to 
+## to include all related measured variables of interest 
+## (i.e., SJ/Objective and Subjective SES/Political ideology/Life Satisfaction)
 
+## Added education to objective SES - and it was causing 
+## heywood cases / negative estimate warnings / same was said for 
+## life_satisfaction_2 so both were removed from the model 
+## At the moment fit indices are strong for every except scalar invariance 
+## where only the RMSEA is elevated at .104
 
-INCOMECLEAN2$age <- as.numeric(INCOMECLEAN2$age)
-INCOMECLEAN2$System_Justification <- as.numeric(INCOMECLEAN2$System_Justification)
-INCOMECLEAN2$income_report2 <- as.numeric(INCOMECLEAN2$income_report2)
-INCOMECLEAN2$RegIncome <- as.numeric(INCOMECLEAN2$RegIncome)
-INCOMECLEAN2$PolOrientation <- as.numeric(INCOMECLEAN2$PolOrientation)
-INCOMECLEAN2$Education <- as.numeric(INCOMECLEAN2$Education)
-INCOMECLEAN2$WellinSociety <- as.numeric(INCOMECLEAN2$WellinSociety)
-INCOMECLEAN2$income_percent <- as.numeric(INCOMECLEAN2$income_percent)
-INCOMECLEAN2$Conspiracy_Theory <- as.numeric(INCOMECLEAN2$Conspiracy_Theory)
+# UNIDIMENSIONAL MODEL
+SJfit <- 'SYSJ =~ SJ1 + SJ2 + SJ3 + SJ4'
+
+# MULTI MODEL
+MULTI_SJfit <- 'SYSJ =~ SJ1 + SJ2 + SJ3 + SJ4
+OSES =~ LOG10USDINCOME 
+SSES =~ WellinSociety
+LS =~ LifeSatisfatction_1'
+
+overall.fit <- cfa(model = SJfit, data = INCOMECLEAN, meanstructure = T)
+summary(overall.fit, rsquare = T, fit.measure = T)
+## DF = 
+
+## Group Measurement equivalence
+## Configural invariance
+
+fit1 <- cfa(SJfit, data = INCOMECLEAN, meanstructure = T, group = "Country")
+
+summary(fit1, standardized = T, fit.measures = T, rsquare = T)
+## DF = 252, 
+## CFI = .967
+
+## Metric Invariance
+fit1.1 <- cfa(SJfit, data = INCOMECLEAN,  group = "Country", 
+              group.equal = "loadings")
+
+summary(fit1.1, standardized = T, fit.measures = T, rsquare = T)
+## DF = 207
+##CFI = .956
+
+## Scalar Invariance
+fit1.2 <- cfa(SJfit, data = INCOMECLEAN,
+            group = "Country", group.equal = c("intercepts", "loadings"))
+
+summary(fit1.2, standardized = T, fit.measures = T, rsquare = T)
+## DF = 330
+## CFI = .866
+
+## model comparison tests (comparison to fit1 to fit1.1 is the main thing that establishes weak invariance)
+lavTestLRT(fit1, test = "D2", pool.robust = T)
+lavTestLRT(fit1.1, test = "D2", pool.robust = T)
+lavTestLRT(fit1.2, test = "D2", pool.robust = T)
+
+```
+
+## Preliminary analyses - descriptives stats w/ anova
+## Means and SD's of SJ and other variables of interest
+```{r}
+ddply(INCOMECLEAN, .(Country), summarise,
+      "mean" = mean(System_Justification, na.rm = T), "sd" = sd(System_Justification, na.rm = T))
+
 
 ```
 
@@ -953,7 +927,7 @@ INCOMECLEAN2$Conspiracy_Theory <- as.numeric(INCOMECLEAN2$Conspiracy_Theory)
 ## income stability and SJ after converting income to USD %
 
 ```{r, warning=FALSE}
-incomecor <- subset(INCOMECLEAN2, 
+incomecor <- subset(INCOMECLEAN, 
                     select = c(income_percent, LOGPPP, LOG10USDINCOME, 
                                Life_Satisfaction, WellinSociety, RegIncome,
                                Conspiracy_Theory, System_Justification, 
@@ -1024,7 +998,35 @@ ddply(INCOMECLEAN2, .(Country), summarise,
 write_sav(INCOMECLEAN2, "Incomeclean2.sav")
 ```
 
-## INCOME SPECIFIC VISUALIZATION FOR STU
+
+
+## Multilevel Modeling
+
+```{r}
+## Hypothesis 1 A - C
+
+# Hypothesis 1A
+
+
+# Hypothesis 1B
+
+
+# Hypothesis 1C
+
+
+```
+
+
+
+
+
+
+
+
+
+
+## _____________________________________________________________________________
+## WAGES/INCOME ANALYSES FOR JAMES/STU
 
 ## Visualizing income outliers
 ```{r}
@@ -1041,14 +1043,23 @@ boxplot(INCOMECLEAN2$Total_Income_usd)
 boxplot(INCOMECLEAN2$LOG10USDINCOME)
 ```
 
-## Income and feelings towards poor people by political ideology
+
 ```{r}
+## Removing NA from Gender
+INCOMECLEAN2 <- INCOMECLEAN2[!(is.na(INCOMECLEAN2$Gender)), ]
+
 
 INCOMECLEAN2 %>%
-        ggplot(aes(x = FeelingThermometer_2, y = income_percent,
-                   colour = PolOrientation)) +
-        geom_jitter() +
-        facet_wrap(~Country)
+        ggplot(aes(x=Gender, y=Conspiracy_Theory, fill=Gender)) +
+        geom_boxplot() +
+        facet_wrap(~Region)+
+        theme(
+    panel.background = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.ticks.x = element_blank(),
+          text = element_text(size = 10),
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = .2),
+    legend.background = element_rect(color = "black"))
     
 ```
 
@@ -1082,7 +1093,7 @@ INCOMECLEAN2 %>%
 ```{r}
 INCOMECLEAN2$PolOrientation <- as.factor(INCOMECLEAN2$PolOrientation)
 
-violinplot <- INCOMECLEAN2 %>%
+ INCOMECLEAN2 %>%
         ggplot(aes(x = Region, y = LOG10USDINCOME, 
                    fill = Region)) +
         geom_violin() +
@@ -1099,26 +1110,52 @@ violinplot <- INCOMECLEAN2 %>%
         labs(title = "Income density by region",
              x = "Region",
              y = "Income")
-```
+
 
 ## Saving violin plot of income density by region
-```{r}
 ggsave("income_density.pdf", plot = violinplot)
+```
+
+## Conspiracy beliefs
+```{r}
+ Conspiracyplot <- INCOMECLEAN %>%
+   ggplot(aes(x = LOG10USDINCOME,
+                   y = Conspiracy_Theory)) +
+        geom_jitter(size = .5)+
+        geom_smooth(formula = y ~ x, method = "lm") +
+        facet_wrap(~Country) +
+        ylim(0, 7) +
+        xlim(-2, 7) +
+  theme(
+    panel.background = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.ticks.x = element_blank(),
+          text = element_text(size = 10),
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = .2),
+    legend.background = element_rect(color = "black")
+  ) +
+        labs(title = "CONSPIRACY BELIEFS EXPLAINED BY INCOME",
+             x = "Income",
+             y = "Conspiracy Beliefs")
+
+ggsave("conspiracyplot.pdf", Conspiracyplot)
+```
+
+```{r}
+INCOMECLEAN2 %>%
+        ggplot(aes())
 ```
 
 ## Income and life satisfaction by Country
 ```{r}
- income_lifesat <- INCOMECLEAN %>%
+  INCOMECLEAN %>%
         ggplot(aes(x = LOG10USDINCOME,
-                   y = Life_Satisfaction,
-                   colour = income_report2)) +
+                   y = Life_Satisfaction)) +
         geom_jitter()+
-        geom_abline(intercept = 3.6, slope = 0.06) +
+        geom_smooth(formula = y ~ x, method = "lm") +
         facet_wrap(~Country) +
         ylim(0, 7) +
         xlim(-4, 7) +
-        scale_color_gradient(low = "red", high = "green", 
-                             labels = c("Daily", "Weekly", "Monthly", "Annually")) +
   theme(
     panel.background = element_blank(),
     axis.line = element_line(color = "black"),
@@ -1131,10 +1168,9 @@ ggsave("income_density.pdf", plot = violinplot)
              x = "Income",
              y = "Life satisfaction",
              fill = "Income Regularity")
-```
 
 ## Saving Income and life satisfaction by Country
-```{r}
+
 ggsave("income_lifesat.pdf", plot = income_lifesat)
 ```
 
@@ -1226,5 +1262,66 @@ smoothScatter(x = INCOMECLEAN2$LOG10USDINCOME, y = INCOMECLEAN2$Life_Satisfactio
 ```
 
 
+## -----------------------------------------------------------------
+## Subet of Financially Distressed regions/countries
+```{r}
+Vendata <- subset(INCOMECLEAN2, Country == "Venezuela")
+Kendata <- subset(INCOMECLEAN2, Country == "Kenya")
+Nigdata <- subset(INCOMECLEAN2, Country == "Nigeria")
+SAdata <- subset(INCOMECLEAN2, Country == "South Africa")
+
+FINANCEDISTRESSED1 <- rbind(Nigdata, Kendata)
+FINANCEDISTRESSED2 <- rbind(SAdata, FINANCEDISTRESSED1)
+FULLFINANCEDISTRESSED <- rbind(Vendata, FINANCEDISTRESSED2)
+```
+
+```{r}
+plot(FULLFINANCEDISTRESSED$gensubwellbeing, FULLFINANCEDISTRESSED$LOG10USDINCOME)
+```
+## LOESS modeling
+```{r}
+### Split DAta into train/valid
+FULLFINANCEDISTRESSED %>% head()
+train.split.pct <- 0.7
+train.row <- runif(n = nrow(FULLFINANCEDISTRESSED)) < train.split.pct
+train <- FULLFINANCEDISTRESSED[train.row, ]
+valid <- FULLFINANCEDISTRESSED[!train.row, ]
+nrow(train)
+nrow(valid)
+
+### LOESS function
+mod <- loess(formula = gensubwellbeing ~ LOG10USDINCOME,
+             data = train, 
+             span = 0.3,
+             degree = 1,
+             normalize = TRUE)
+
+calc.RMSE <- function(pred,act){
+        sqrt(mean((pred-act)^2)/length(pred))
+}
+
+results <- matrix(NA, 0, 4)
+colnames(results) <- c("span","degree", "train.rmse", "valid.rmse")
 
 
+for(degree in seq(0,2,1)){
+        for(span in seq(0.15,1,0.01)){
+                mod <- loess(formula = gensubwellbeing ~ LOG10USDINCOME,
+             data = train, 
+             span = 1,
+             degree = 1,
+             normalize = TRUE,
+             control = loess.control(surface = "direct"))
+                train.rmse <- calc.RMSE(mod$fitted, train$gensubwellbeing)
+                valid.rmse <- calc.RMSE(predict(mod, newdata = valid)
+                                        %>% 
+                                                as.data.frame(),
+                                        valid$gensubwellbeing)
+                
+                results <- rbind(results, c(span,degree,train.rmse,valid.rmse))
+        }
+}
+
+results <- as.data.frame(results)
+best <- results[which.min(results$valid.rmse)]
+```
