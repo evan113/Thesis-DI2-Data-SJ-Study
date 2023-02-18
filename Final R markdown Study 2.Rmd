@@ -33,11 +33,12 @@ library(jtools)
 library(BaylorEdPsych)
 library(lme4) ## Multilevel regression modeling
 library(sjPlot)
-library(flexplot)
+library(flexplot) ## devtools::install_github("dustinfife/flexplot")
 library(styler)
 library(readxl)
 library(reghelper) # Simple slopes for interactions
 library(mlma) # Multilevel mediation analysis
+library(cowplot) ## multiplots
 ```
 
 ## Opening indvidual and country level data
@@ -48,13 +49,9 @@ country_level <- read_sav("Country level analysis for DI2.zip")
 ```
 
 
-## _______________________________________________________________________
-## BEGGINING OF DI2 DATA ANALYSES
-
 ## Full data - indvidual level analysis
 ```{r}
 ## Getting NA's instead of blanks for income and Salary
-
 dat2 <- full_evan_dataset %>% mutate_at(
   .vars = c(
     "Income_1", "Income_2",
@@ -110,7 +107,6 @@ dat2$Country[dat2$Country == 39] <- "Turkey"
 dat2$Country[dat2$Country == 40] <- "UK"
 dat2$Country[dat2$Country == 41] <- "US"
 dat2$Country[dat2$Country == 42] <- "Venezuela"
-
 dat2$Country <- as.factor(dat2$Country)
 ```
 
@@ -170,20 +166,15 @@ dat2$Region[dat2$Country %in% "Nigeria"] <- "SubS. Africa"
 ## South Asian
 dat2$Region[dat2$Country %in% "Pakistan"] <- "South Asian"
 dat2$Region[dat2$Country %in% "India"] <- "South Asian"
-
 dat2$Region <- as.factor(dat2$Region)
 ```
 
 ## exploring missing data
 ```{r}
 any(is.na(dat2))
-
 sum(is.na(dat2))
-
 colSums(is.na(dat2))
-
 which(is.na(dat2$Country))
-
 
 ## Removing missing values from the country column
 dat2 <- dat2[!(is.na(dat2$Country)), ]
@@ -206,19 +197,14 @@ summary(dat2$Income_4)
 ```{r}
 dat2$income_report = NA
 dat2$income_report <- as.character(dat2$income_report)
-
 dat2[ which(dat2$Income_1 != FALSE), "income_report" ] = "Daily" 
 dat2[ which(dat2$Income_2 != FALSE), "income_report" ] = "Weekly"
 dat2[ which(dat2$Income_3 != FALSE), "income_report" ] = "Monthly"
 dat2[ which(dat2$Income_4 != FALSE), "income_report" ] = "Annually"
-
 dat2$income_report <- factor(dat2$income_report, levels = c("Annually", "Monthly",
                                                             "Weekly", "Daily"))
-
 ## DONT RUN FOR NOW
 dat2 <- dat2[!(is.na(dat2$income_report)), ]
-
-
 ```
 
 
@@ -226,8 +212,6 @@ dat2 <- dat2[!(is.na(dat2$income_report)), ]
 ```{r}
 library(forcats)
 library(RColorBrewer)
-
-
  incomeplot <- ggplot(dat2, aes(x = Country, fill = income_report)) +
   geom_bar(width = 0.6, size = 0.6, alpha = 0.8, position = position_fill(reverse = TRUE)) +
            scale_y_continuous(expand = expansion(0)) +
@@ -261,17 +245,14 @@ ggsave("incomereport_plot.pdf", plot = incomeplot)
 
 ```{r}
 dat2$income_report2 = NA
-
 dat2$income_report2[dat2$income_report == "Daily"] = "1"
 dat2$income_report2[dat2$income_report == "Weekly"] = "2"
 dat2$income_report2[dat2$income_report == "Monthly"] = "3"
 dat2$income_report2[dat2$income_report == "Annually"] = "4"
-
 dat2$income_report2 <- as.numeric(dat2$income_report2)
 
 ## DON'T RUN FOR NOW
 dat2 <- dat2[!(is.na(dat2$income_report2)), ]
-
 ```
 
 ## Conspiracy theory graphs of interest
@@ -279,16 +260,12 @@ dat2 <- dat2[!(is.na(dat2$income_report2)), ]
 dat2$Conspiracy_Theory <- as.numeric(dat2$Conspiracy_Theory)
 dat2$PolOrientation <- as.factor(dat2$PolOrientation)
 dat2$System_Justification <- as.numeric(dat2$System_Justification)
-
 dat2 %>% ggplot(aes(x = PolOrientation, y = Conspiracy_Theory)) +
         geom_col(aes(fill = PolOrientation))
-
 dat2 %>% ggplot(aes(x = PolEngagement_Voting, y =Conspiracy_Theory)) +
         geom_col(aes(fill = PolEngagement_Voting))
-
 dat2 %>% ggplot(aes(x = PolEngagement_Civic, y =Conspiracy_Theory)) +
         geom_col(aes(fill = PolEngagement_Voting))
-
 dat2 %>% ggplot(aes(x = System_Justification, y =Conspiracy_Theory)) +
         geom_col(aes(fill = PolEngagement_Voting))
 ## build a profile based upon these measures for who is conspiracy thinking
@@ -298,7 +275,6 @@ dat2 %>% ggplot(aes(x = System_Justification, y =Conspiracy_Theory)) +
 cor(dat2$Conspiracy_Theory, dat2$PolEngagement_Voting, use = "complete.obs")
 cor(dat2$Conspiracy_Theory, dat2$PolEngagement_Civic, use = "complete.obs")
 cor(dat2$Conspiracy_Theory, dat2$PolEngagement_Voice, use = "complete.obs")
-
 cor(dat2$Conspiracy_Theory, dat2$System_Justification, use = "complete.obs")
 ```
 
@@ -481,7 +457,6 @@ dat2 <- dat2 %>%
       )
     )
   ))
-
 dat2 <- dat2 %>%
   mutate(Freedom = ifelse(Country == "Argentina", 84,
     ifelse(Country == "Australia", 95,
@@ -677,7 +652,6 @@ INCOMECLEAN <- subset(dat2, select = c(
   "Subjwellbeing12", "Subjwellbeing13", "Subjwellbeing14", "Subjwellbeing15",
   "Global_SelfAssessedH", "Identity2"
 ))
-
 INCOMECLEAN$GINI <- as.numeric(INCOMECLEAN$GINI)
 INCOMECLEAN$LOG10USDINCOME <- as.numeric(INCOMECLEAN$LOG10USDINCOME)
 INCOMECLEAN$Identity2 <- as.numeric(INCOMECLEAN$Identity2)
@@ -722,41 +696,33 @@ INCOMECLEAN <- INCOMECLEAN %>%
 
 ## Demographic descriptives (Age and Gender) of total sample
 ```{r}
-## RUN THIS LINE OF CODE WHEN ONLY GETTING DESCRIPTIVES (REMOVING GENDER NA'S)
+## RUN THIS LINE OF CODE WHEN ONLY GETTING DESCRIPTIVE (REMOVING GENDER NA'S)
 INCOMECLEAN <- INCOMECLEAN[!(is.na(INCOMECLEAN$Gender)), ]
 
 INCOMECLEAN$Gender2 <- factor(INCOMECLEAN$Gender, levels = c(1, 2),
                               labels = c("Male", "Female"))
 
 label(INCOMECLEAN$age) <- "Age"
+
 label(INCOMECLEAN$Gender2) <- "Gender"
 
-
-## Creating descriptives for demographics
-
-
+## Creating descriptive for demographics
 summary(INCOMECLEAN$Gender2)
 mean(INCOMECLEAN$age, na.rm = T)
 sd(INCOMECLEAN$age, na.rm = T)
-
 attach(INCOMECLEAN)
 vars_for_table <- c("age", "Gender2")
-
 CreateTableOne(vars = vars_for_table, data = INCOMECLEAN)
 ```
 
 ## Calculating Cronbach's Alpha for SJ and life satisfaction scales
 ```{r}
 library(ltm)
-
 cronbachalphaSJ <- subset(INCOMECLEAN,
                           select = c(SJ1, SJ2, SJ3, SJ4))
-
 cronbach.alpha(cronbachalphaSJ, na.rm = T)
-
 cronbachalphaLS <- subset(INCOMECLEAN,
                          select = c(LifeSatisfatction_1, LifeSatisfatction_2))
-
 cronbach.alpha(cronbachalphaLS, na.rm = T)
 ```
 
@@ -768,49 +734,42 @@ INCOMECLEAN %>%
         summarise(mean = mean(System_Justification, na.rm = T),
                   sd = sd(System_Justification, na.rm = T),
                   miss = mean(is.na(System_Justification)))
-
 ## Log income
 INCOMECLEAN %>%
         group_by(Country) %>%
         summarise(mean = mean(LOG10USDINCOME, na.rm = T),
                   sd = sd(LOG10USDINCOME, na.rm = T),
                   miss = mean(is.na(LOG10USDINCOME)))
-
 ## Income regularity 
 INCOMECLEAN %>%
         group_by(Country) %>%
         summarise(mean = mean(RegIncome, na.rm = T),
                   sd = sd(RegIncome, na.rm = T),
                   miss = mean(is.na(RegIncome)))
-
 ## Education
 INCOMECLEAN %>%
         group_by(Country) %>%
         summarise(mean = mean(Education, na.rm = T),
                   sd = sd(Education, na.rm = T),
                   miss = mean(is.na(Education)))
-
 ## Subjective SES
 INCOMECLEAN %>%
         group_by(Country) %>%
         summarise(mean = mean(WellinSociety, na.rm = T),
                   sd = sd(WellinSociety, na.rm = T),
                   miss = mean(is.na(WellinSociety)))
-
 ## Political Orientation
 INCOMECLEAN %>%
         group_by(Country) %>%
         summarise(mean = mean(PolOrientation, na.rm = T),
                   sd = sd(PolOrientation, na.rm = T),
                   miss = mean(is.na(PolOrientation)))
-
 ## Life Satisfaction
 INCOMECLEAN4 %>%
         group_by(Country) %>%
         summarise(mean = mean(Life_Satisfaction, na.rm = T),
                   sd = sd(Life_Satisfaction, na.rm = T),
                   miss = mean(is.na(Life_Satisfaction)))
-
 ## National Identity
 INCOMECLEAN %>%
         group_by(Country) %>%
@@ -827,43 +786,36 @@ INCOMECLEAN %>%
         drop_na(LOG10USDINCOME) %>%
         do(data.frame(correlation = cor(.$System_Justification, .$LOG10USDINCOME, method = "pearson"),
                       pvalue = cor.test(.$System_Justification, .$LOG10USDINCOME)$p.value))
-
-
 ## Income regularity
 INCOMECLEAN %>%
         group_by(Country) %>%
         drop_na(RegIncome) %>%
         do(data.frame(correlation = cor(.$System_Justification, .$RegIncome, method = "pearson"),
                       pvalue = cor.test(.$System_Justification, .$RegIncome)$p.value))
-
 ## Education
 INCOMECLEAN %>%
         group_by(Country) %>%
         drop_na(LOG10USDINCOME) %>%
         do(data.frame(correlation = cor(.$System_Justification, .$Education, method = "pearson"),
                       pvalue = cor.test(.$System_Justification, .$Education)$p.value))
-
 ## Subjective SES
 INCOMECLEAN %>%
         group_by(Country) %>%
         drop_na(LOG10USDINCOME) %>%
         do(data.frame(correlation = cor(.$System_Justification, .$WellinSociety, method = "pearson"),
                       pvalue = cor.test(.$System_Justification, .$WellinSociety)$p.value))
-
 ## Political orientation
 INCOMECLEAN %>%
         group_by(Country) %>%
         drop_na(PolOrientation) %>%
         do(data.frame(correlation = cor(.$System_Justification, .$PolOrientation, method = "pearson"),
                       pvalue = cor.test(.$System_Justification, .$PolOrientation)$p.value))
-
 ## Life Satisfaction
 INCOMECLEAN %>%
         group_by(Country) %>%
         drop_na(Life_Satisfaction) %>%
         do(data.frame(correlation = cor(.$System_Justification, .$Life_Satisfaction, method = "pearson"),
                       pvalue = cor.test(.$System_Justification, .$Life_Satisfaction)$p.value))
-
 ## National Identity
 INCOMECLEAN %>%
         group_by(Country) %>%
@@ -878,14 +830,9 @@ smallcor <- subset(INCOMECLEAN, select = c("System_Justification", "LOG10USDINCO
                                            "Education", "WellinSociety", "PolOrientation", 
                                            "Life_Satisfaction", "GINI", "Freedom",
                                            "Social_Mobility", "polpartypower"))
-
 chart.Correlation(smallcor)
-
 apa.cor.table(smallcor, filename = "Country_level_correlations.doc")
-
 apa.cor.table(incomecor, filename = "INCOME_CORRELATIONS.doc", table.number = 1)
-
-
 ```
 
 
@@ -895,7 +842,6 @@ apa.cor.table(incomecor, filename = "INCOME_CORRELATIONS.doc", table.number = 1)
 ## Overall model
 ## We may have to drop SJ1 - leads to poor fit indices
 ## Better fitting model is a 4 factor model with SJ1 removed for better fit
-
 ## Paper to read about RMSEA issues and their commonality
 ## Kenny, Kaniskan, and Mccoach, 2015
 ## Main take away - For models with small df, the RMSEA can exceed cutoffs
@@ -904,56 +850,43 @@ apa.cor.table(incomecor, filename = "INCOME_CORRELATIONS.doc", table.number = 1)
 ## Following Kenny et al. (2015) recs, I increased the size of the model to 
 ## to include all related measured variables of interest 
 ## (i.e., SJ/Objective and Subjective SES/Political ideology/Life Satisfaction)
-
 ## Added education to objective SES - and it was causing 
 ## heywood cases / negative estimate warnings / same was said for 
 ## life_satisfaction_2 so both were removed from the model 
 ## At the moment fit indices are strong for every except scalar invariance 
 ## where only the RMSEA is elevated at .104
-
 # UNIDIMENSIONAL MODEL
 SJfit <- 'SYSJ =~ SJ1 + SJ2 + SJ3 + SJ4'
-
 # MULTI MODEL
 MULTI_SJfit <- 'SYSJ =~ SJ1 + SJ2 + SJ3 + SJ4
 OSES =~ LOG10USDINCOME 
 SSES =~ WellinSociety
 LS =~ LifeSatisfatction_1'
-
 overall.fit <- cfa(model = SJfit, data = INCOMECLEAN, meanstructure = T)
 summary(overall.fit, rsquare = T, fit.measure = T)
 ## DF = 
-
 ## Group Measurement equivalence
 ## Configural invariance
-
 fit1 <- cfa(SJfit, data = INCOMECLEAN, meanstructure = T, group = "Country")
-
 summary(fit1, standardized = T, fit.measures = T, rsquare = T)
 ## DF = 252, 
 ## CFI = .967
-
 ## Metric Invariance
 fit1.1 <- cfa(SJfit, data = INCOMECLEAN,  group = "Country", 
               group.equal = "loadings")
-
 summary(fit1.1, standardized = T, fit.measures = T, rsquare = T)
 ## DF = 207
 ##CFI = .956
-
 ## Scalar Invariance
 fit1.2 <- cfa(SJfit, data = INCOMECLEAN,
             group = "Country", group.equal = c("intercepts", "loadings"))
-
 summary(fit1.2, standardized = T, fit.measures = T, rsquare = T)
 ## DF = 330
 ## CFI = .866
-
 ## model comparison tests (comparison to fit1 to fit1.1 is the main thing that establishes weak invariance)
 lavTestLRT(fit1, test = "D2", pool.robust = T)
 lavTestLRT(fit1.1, test = "D2", pool.robust = T)
 lavTestLRT(fit1.2, test = "D2", pool.robust = T)
-
 ```
 
 
@@ -978,56 +911,49 @@ INCOMECLEAN2 <- INCOMECLEAN1 %>%
 ## Removing extreme outcome outliers
 INCOMECLEAN2 <- subset(INCOMECLEAN2, income_centered <= 11)
 
-
-
-
 # Hypothesis 1A + H1B Objective SES predicting SJ
-
 ## random intercept model
 H1_A_and_B_randommodel <- lmer(System_Justification ~ 1 + (1 | Country),
                              data = INCOMECLEAN2, REML = F)
+
 summ(H1_A_and_B_randommodel)
 tab_model(H1_A_and_B_randommodel) ## 16% variance in SJ explained by country
 
 ## Adding level 1 predictors
 H1_A_and_B <- lmer(System_Justification ~ 1 + income_centered + education_centered +
-                           age + Gender2 + 
 (1 + income_centered + education_centered | Country),
                    data = INCOMECLEAN2, REML = F)
-
 summ(H1_A_and_B)
+
+## building a table for both h1a and h1b
 tab_model(H1_A_and_B)
 
 ## Visualize random effects in H1 A and B
-
-visualize(H1_A_and_B, plot = "model",
+plot_h1a_b_1 <- visualize(H1_A_and_B, plot = "model",
           formula = System_Justification~income_centered + Country,
           sample = 42)
 
-visualize(H1_A_and_B, plot = "model",
+plot_h1a_b_2 <- visualize(H1_A_and_B, plot = "model",
           formula = System_Justification~education_centered + Country,
           sample = 42)
 
 visualize(H1_A_and_B, plot = "residuals")
 
+
 # Hypothesis 1C - Relationship between subjective SES and SJ mediated by life sat
 ## Group mean level 1 predictors
 library(mediation)
-
 INCOMECLEAN3 <- INCOMECLEAN %>%
         drop_na(WellinSociety) %>%
         group_by(Country) %>%
         mutate(subjective_SES_centered = WellinSociety - mean(WellinSociety))
-
 INCOMECLEAN4 <- INCOMECLEAN3 %>%
         group_by(Country) %>%
         mutate(life_satisfaction_centered = Life_Satisfaction - mean(Life_Satisfaction))
 
-
 H1C_Mediate_model <- lmer(life_satisfaction_centered ~ subjective_SES_centered +
                                   (1 | Country), 
                           data = INCOMECLEAN4)
-
 tab_model(H1C_Mediate_model) ## checking A path
 
 H1C_Full_model <- lmer(System_Justification ~ 1 + life_satisfaction_centered + 
@@ -1039,58 +965,56 @@ H1C_results <- mediation::mediate(H1C_Mediate_model, H1C_Full_model,
                        treat = "subjective_SES_centered", mediator = "life_satisfaction_centered", 
                        boot = FALSE,
                        sims = 1000, dropobs = TRUE)
-
-
 summary(H1C_results)
 estimates(H1C_Full_model)
+tab_model(H1C_Full_model)
 
+
+visualize(H1C_Full_model, plot = "model",
+          formula = System_Justification~subjective_SES_centered + Country |
+                  life_satisfaction_centered,
+          sample = 42)
+
+ flexplot(System_Justification~subjective_SES_centered + life_satisfaction_centered,
+         data = INCOMECLEAN4, se = FALSE, method = "lm", sample = 100)
+```
+
+## Creating plots for H1a - H1C
+```{r}
+cowplot::plot_grid(plot_h1a_b_1, plot_h1a_b_2, nrow = 1)
 ```
 
 ## Hypotheses 2A - 2B
 ```{r, warning=FALSE}
-
-
 ## group mean centering level 1 predictor and converting level 2 moderator to nominal 
 INCOMECLEAN$polpartypower_fac <- factor(INCOMECLEAN$polpartypower, levels = c(
         0, 1, 2), labels = c("Right", "Center", "Left"))
-
 INCOMECLEAN5 <- INCOMECLEAN %>%
         drop_na(PolOrientation) %>%
         group_by(Country) %>%
         mutate(PolOrientation_centered = PolOrientation - mean(PolOrientation))
-
 ## Hypothesis 2A - Political ideology predicting SJ
-
 H2A <- lmer(System_Justification ~ PolOrientation_centered +
                     (1 + PolOrientation_centered | Country), data = INCOMECLEAN5)
-
 summary(H2A)
 summ(H2A)
 tab_model(H2A)
-
 ## Hypothesis 2B - Relationship between political ideology and SJ moderated by 
 ## Political party in power
-
 H2B_base_model <- lmer(System_Justification ~ PolOrientation_centered  +
                     (1 + PolOrientation_centered | Country), data = INCOMECLEAN5)
-
-
-
 H2B_Moderation_model <- lmer(System_Justification ~ PolOrientation_centered + 
                                      polpartypower_fac + 
                                      PolOrientation_centered*polpartypower_fac +
                                      (1 + PolOrientation_centered | Country),
                              data = INCOMECLEAN5)
-
 summary(H2B_Moderation_model)
 simple_slopes(H2B_Moderation_model)
 tab_model(H2B_Moderation_model)
-
 visualize(H2B_Moderation_model, plot = "model",
           formula = System_Justification~PolOrientation_centered + Country | 
                   polpartypower_fac,
                   sample = 42)
-
 visualize(H2B_Moderation_model, plot = "residuals")
 ```
 
@@ -1098,41 +1022,29 @@ visualize(H2B_Moderation_model, plot = "residuals")
 ## Hypotheses 3A - 3B
 ```{r}
 ## Grand mean centering GINI for multilevel models
-
 INCOMECLEAN$GINI <- scale(INCOMECLEAN$GINI, 
                          center = T, scale = T)
 ## Hypothesis 3A - Economic inequality predicting SJ
-
 H3A <- lmer(System_Justification ~ GINI + 
                     (1 | Country),  data = INCOMECLEAN)
 summary(H3A)
 summ(H3A)
 tab_model(H3A)
-
 visualize(H3A, plot = "model",
           formula = System_Justification~GINI + Country,
           sample = 42)
-
 visualize(H3A, plot = "residuals")
-
 ## Hypothesis 3B
-
 ## Grand mean center social mobility for multilevel model
 INCOMECLEAN$Social_Mobility <- scale(INCOMECLEAN$Social_Mobility, 
                          center = T, scale = T)
-
 H3B_base_model <- lmer(System_Justification ~ GINI +  
                     (1 | Country),  data = INCOMECLEAN)
-
-
 H3B_Moderation_Model <- lmer(System_Justification ~ GINI*Social_Mobility +
                                      (1 | Country), data = INCOMECLEAN)
-
-
 summary(H3B_Moderation_Model)
 summ(H3B_Moderation_Model)
 tab_model(H3B_Moderation_Model)
-
 visualize(H3B_Moderation_Model, plot = "model",
           formula = System_Justification~Social_Mobility + Country | GINI,
           sample = 42)
@@ -1143,15 +1055,12 @@ visualize(H3B_Moderation_Model, plot = "model",
 ## Grand mean centering freedom/civil liberties
 INCOMECLEAN$Freedom <- scale(INCOMECLEAN$Freedom, 
                          center = T, scale = T)
-
 ## H4A & H4B - Freedom predicting SJ
 H4A_4B <- lmer(System_Justification ~ Freedom + (1 + Freedom | Country),
                data = INCOMECLEAN)
-
 summary(H4A_4B)
 summ(H4A_4B)
 tab_model(H4A_4B)
-
 visualize(H4A_4B, plot = "model",
           sample = 42)
 ```
@@ -1163,13 +1072,10 @@ visualize(H4A_4B, plot = "model",
 ```{r}
 boxplot(INCOMECLEAN2$Total_Income_usd)
 boxplot(INCOMECLEAN2$LOG10USDINCOME)
-
 INCOMECLEAN2 <- INCOMECLEAN2 %>%
         filter(Total_Income_usd < 1000000)
-
 INCOMECLEAN2 <- INCOMECLEAN2 %>%
         filter(LOG10USDINCOME < 15)
-
 boxplot(INCOMECLEAN2$Total_Income_usd)
 boxplot(INCOMECLEAN2$LOG10USDINCOME)
 ```
@@ -1178,8 +1084,6 @@ boxplot(INCOMECLEAN2$LOG10USDINCOME)
 ```{r}
 ## Removing NA from Gender
 INCOMECLEAN2 <- INCOMECLEAN2[!(is.na(INCOMECLEAN2$Gender)), ]
-
-
 INCOMECLEAN2 %>%
         ggplot(aes(x=Gender, y=Conspiracy_Theory, fill=Gender)) +
         geom_boxplot() +
@@ -1198,8 +1102,6 @@ INCOMECLEAN2 %>%
 ```{r}
 INCOMECLEAN2$income_report2 <- as.factor(INCOMECLEAN2$income_report2)
 INCOMECLEAN2 <- INCOMECLEAN2[!(is.na(INCOMECLEAN2$income_report2)), ]
-
-
 INCOMECLEAN2 %>%
         ggplot(aes(x = Total_Income_usd, y = Life_Satisfaction, 
                    colour = income_report)) +
@@ -1217,13 +1119,11 @@ INCOMECLEAN2 %>%
         labs(title = "Relationship between income and life satisfaction",
              x = "income",
              y = "life satisfaction")
-
 ```
 
 ## Violin plot of income density by region
 ```{r}
 INCOMECLEAN2$PolOrientation <- as.factor(INCOMECLEAN2$PolOrientation)
-
  INCOMECLEAN2 %>%
         ggplot(aes(x = Region, y = LOG10USDINCOME, 
                    fill = Region)) +
@@ -1241,8 +1141,6 @@ INCOMECLEAN2$PolOrientation <- as.factor(INCOMECLEAN2$PolOrientation)
         labs(title = "Income density by region",
              x = "Region",
              y = "Income")
-
-
 ## Saving violin plot of income density by region
 ggsave("income_density.pdf", plot = violinplot)
 ```
@@ -1268,7 +1166,6 @@ ggsave("income_density.pdf", plot = violinplot)
         labs(title = "CONSPIRACY BELIEFS EXPLAINED BY INCOME",
              x = "Income",
              y = "Conspiracy Beliefs")
-
 ggsave("conspiracyplot.pdf", Conspiracyplot)
 ```
 
@@ -1299,9 +1196,7 @@ INCOMECLEAN2 %>%
              x = "Income",
              y = "Life satisfaction",
              fill = "Income Regularity")
-
 ## Saving Income and life satisfaction by Country
-
 ggsave("income_lifesat.pdf", plot = income_lifesat)
 ```
 
@@ -1333,7 +1228,6 @@ INCOMECLEAN2 %>%
 ## Income Regularity and life satisfaction
 ```{r}
 INCOMECLEAN2$income_report2 <- as.numeric(INCOMECLEAN2$income_report2)
-
 INCOMECLEAN2 %>% 
         ggplot(aes(x = Life_Satisfaction,
                    y = income_report2, 
@@ -1361,23 +1255,19 @@ INCOMECLEAN2 <- INCOMECLEAN2 %>%
 ```{r}
 library(gridExtra)
 library(colorspace)
-
 p = ggplot(INCOMECLEAN2, aes(x = LOG10USDINCOME, y = Life_Satisfaction)) +
         ggtitle("Plot of income and life sat") +
         xlab("Income") +
         ylab("Life Satisfaction")
-
 p1 = p +
         geom_point(alpha = 0.01, colour = "orange") +
         geom_density2d() +
         theme_bw()
-
 p2 = p +
         stat_bin_hex(colour = "white", na.rm = T) +
         scale_fill_gradientn(colours = c("purple", "green"),
                              name = "Frequency",
                              na.value = NA)
-
 grid.arrange(p1, p2, ncol = 2)
 ```
 
@@ -1386,7 +1276,6 @@ library(RColorBrewer)
 buylrd = c("#313695", "#4575B4", "#74ADD1", "#ABD9E9", "#E0F3F8", "#FFFFBF",
            "#FEE090", "#FDAE61", "#F46D43", "#D73027", "#A50026") 
 myColRamp = colorRampPalette(c(buylrd))
-
 ## Smoothed scatterplot
 smoothScatter(x = INCOMECLEAN2$LOG10USDINCOME, y = INCOMECLEAN2$Life_Satisfaction,
               colramp = myColRamp)
@@ -1400,7 +1289,6 @@ Vendata <- subset(INCOMECLEAN2, Country == "Venezuela")
 Kendata <- subset(INCOMECLEAN2, Country == "Kenya")
 Nigdata <- subset(INCOMECLEAN2, Country == "Nigeria")
 SAdata <- subset(INCOMECLEAN2, Country == "South Africa")
-
 FINANCEDISTRESSED1 <- rbind(Nigdata, Kendata)
 FINANCEDISTRESSED2 <- rbind(SAdata, FINANCEDISTRESSED1)
 FULLFINANCEDISTRESSED <- rbind(Vendata, FINANCEDISTRESSED2)
@@ -1419,22 +1307,17 @@ train <- FULLFINANCEDISTRESSED[train.row, ]
 valid <- FULLFINANCEDISTRESSED[!train.row, ]
 nrow(train)
 nrow(valid)
-
 ### LOESS function
 mod <- loess(formula = gensubwellbeing ~ LOG10USDINCOME,
              data = train, 
              span = 0.3,
              degree = 1,
              normalize = TRUE)
-
 calc.RMSE <- function(pred,act){
         sqrt(mean((pred-act)^2)/length(pred))
 }
-
 results <- matrix(NA, 0, 4)
 colnames(results) <- c("span","degree", "train.rmse", "valid.rmse")
-
-
 for(degree in seq(0,2,1)){
         for(span in seq(0.15,1,0.01)){
                 mod <- loess(formula = gensubwellbeing ~ LOG10USDINCOME,
@@ -1452,7 +1335,6 @@ for(degree in seq(0,2,1)){
                 results <- rbind(results, c(span,degree,train.rmse,valid.rmse))
         }
 }
-
 results <- as.data.frame(results)
 best <- results[which.min(results$valid.rmse)]
-```
+
