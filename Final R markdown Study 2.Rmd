@@ -12,15 +12,11 @@ setwd("/Users/Evanvaldes1/Desktop/MASSEY/STUDY 2/CODE AND DATA/Thesis-DI2-Data-S
 
 ```{r}
 library(dplyr)
-library(plyr)
 library(stringr)
-library(rms)
-library(knitr)
 library(readr)
-library(surveydata)
 library(Hmisc)
 library(ggplot2)
-library(psych)
+library(psych) ## Can use for within and between correlations statsBy()
 library(haven)
 library(stats)
 library(lavaan)
@@ -32,18 +28,14 @@ library(PerformanceAnalytics)
 library(ggiraphExtra)
 library(equaltestMI)
 library(stargazer)
-library(sjPlot)
 library(apaTables)
-library(interactions)
 library(jtools)
-library(mice)
 library(BaylorEdPsych)
 library(lme4) ## Multilevel regression modeling
+library(sjPlot)
+library(flexplot)
 library(styler)
 library(readxl)
-library(plm)
-library(ggdag)
-library(dagitty)
 library(reghelper) # Simple slopes for interactions
 library(mlma) # Multilevel mediation analysis
 ```
@@ -51,6 +43,8 @@ library(mlma) # Multilevel mediation analysis
 ## Opening indvidual and country level data
 ```{r}
 full_evan_dataset <- read_sav("Full Evan Dataset.zip")
+
+country_level <- read_sav("Country level analysis for DI2.zip")
 ```
 
 
@@ -178,7 +172,6 @@ dat2$Region[dat2$Country %in% "Pakistan"] <- "South Asian"
 dat2$Region[dat2$Country %in% "India"] <- "South Asian"
 
 dat2$Region <- as.factor(dat2$Region)
-
 ```
 
 ## exploring missing data
@@ -307,12 +300,11 @@ cor(dat2$Conspiracy_Theory, dat2$PolEngagement_Civic, use = "complete.obs")
 cor(dat2$Conspiracy_Theory, dat2$PolEngagement_Voice, use = "complete.obs")
 
 cor(dat2$Conspiracy_Theory, dat2$System_Justification, use = "complete.obs")
-
-
 ```
 
 ## Creating Social Mobility index
-## Data accessed from https://www.weforum.org/reports/global-social-mobility-index-2020-why-economies-benefit-from-fixing-inequality/#country-rankings 
+## Data accessed from 
+## https://www.weforum.org/reports/global-social-mobility-index-2020-why-economies-benefit-from-fixing-inequality/#country-rankings 
 ```{r}
 dat2 <- dat2 %>%
   mutate(Social_Mobility = ifelse(Country == "Argentina", 57.3,
@@ -332,13 +324,13 @@ dat2 <- dat2 %>%
                               ifelse(Country == "Indonesia", 49.3,
                                 ifelse(Country == "Italy", 67.4,
                                   ifelse(Country == "Japan", 76.1,
-                                    ifelse(Country == "Kenya", NA,
+                                    ifelse(Country == "Kenya", 45.8,
                                       ifelse(Country == "Malaysia", 62.0,
                                         ifelse(Country == "Mexico", 52.6,
-                                          ifelse(Country == "Morocco", NA,
+                                          ifelse(Country == "Morocco", 41.2,
                                             ifelse(Country == "Netherlands", 82.4,
                                               ifelse(Country == "New Zealand", 74.3,
-                                                ifelse(Country == "Nigeria", NA,
+                                                ifelse(Country == "Nigeria", 38.8,
                                                   ifelse(Country == "Pakistan", 36.7,
                                                     ifelse(Country == "Panama", 51.4,
                                                       ifelse(Country == "Peru", 49.9,
@@ -669,7 +661,7 @@ dat2 <- dat2 %>%
   ))
 ```
 
-## Making a subset of the data for income cleaning purposes
+## Making a subset of the data for ANALYSES
 ```{r}
 INCOMECLEAN <- subset(dat2, select = c(
   "Country", "Region", "age", "Gender", "PolOrientation", "Total_Income_usd",
@@ -725,7 +717,6 @@ INCOMECLEAN <- INCOMECLEAN %>%
     Subjectivewellbeing6 + Subjectivewellbeing7 + Subjwellbeing8 +
     Subjwellbeing9 + Subjewellbeing10 + Subjectivewellbeig11 +
     Subjwellbeing12 + Subjwellbeing13 + Subjwellbeing14 + Subjwellbeing15)
-
 ```
 
 
@@ -769,7 +760,66 @@ cronbachalphaLS <- subset(INCOMECLEAN,
 cronbach.alpha(cronbachalphaLS, na.rm = T)
 ```
 
-## Individual-level system justification correlations by country
+## Country-level descriptives of variables of interest
+```{r}
+## System Justifcation
+INCOMECLEAN %>%
+        group_by(Country) %>%
+        summarise(mean = mean(System_Justification, na.rm = T),
+                  sd = sd(System_Justification, na.rm = T),
+                  miss = mean(is.na(System_Justification)))
+
+## Log income
+INCOMECLEAN %>%
+        group_by(Country) %>%
+        summarise(mean = mean(LOG10USDINCOME, na.rm = T),
+                  sd = sd(LOG10USDINCOME, na.rm = T),
+                  miss = mean(is.na(LOG10USDINCOME)))
+
+## Income regularity 
+INCOMECLEAN %>%
+        group_by(Country) %>%
+        summarise(mean = mean(RegIncome, na.rm = T),
+                  sd = sd(RegIncome, na.rm = T),
+                  miss = mean(is.na(RegIncome)))
+
+## Education
+INCOMECLEAN %>%
+        group_by(Country) %>%
+        summarise(mean = mean(Education, na.rm = T),
+                  sd = sd(Education, na.rm = T),
+                  miss = mean(is.na(Education)))
+
+## Subjective SES
+INCOMECLEAN %>%
+        group_by(Country) %>%
+        summarise(mean = mean(WellinSociety, na.rm = T),
+                  sd = sd(WellinSociety, na.rm = T),
+                  miss = mean(is.na(WellinSociety)))
+
+## Political Orientation
+INCOMECLEAN %>%
+        group_by(Country) %>%
+        summarise(mean = mean(PolOrientation, na.rm = T),
+                  sd = sd(PolOrientation, na.rm = T),
+                  miss = mean(is.na(PolOrientation)))
+
+## Life Satisfaction
+INCOMECLEAN4 %>%
+        group_by(Country) %>%
+        summarise(mean = mean(Life_Satisfaction, na.rm = T),
+                  sd = sd(Life_Satisfaction, na.rm = T),
+                  miss = mean(is.na(Life_Satisfaction)))
+
+## National Identity
+INCOMECLEAN %>%
+        group_by(Country) %>%
+        summarise(mean = mean(Identity2, na.rm = T),
+                  sd = sd(Identity2, na.rm = T),
+                  miss = mean(is.na(Identity2)))
+```
+
+##  system justification correlations at the individual level within Countries
 ```{r}
 ## log Income
 INCOMECLEAN %>%
@@ -778,12 +828,6 @@ INCOMECLEAN %>%
         do(data.frame(correlation = cor(.$System_Justification, .$LOG10USDINCOME, method = "pearson"),
                       pvalue = cor.test(.$System_Justification, .$LOG10USDINCOME)$p.value))
 
-## income percent 
-INCOMECLEAN %>%
-        group_by(Country) %>%
-        drop_na(LOG10USDINCOME) %>%
-        do(data.frame(correlation = cor(.$System_Justification, .$income_percent, method = "pearson"),
-                      pvalue = cor.test(.$System_Justification, .$income_percent)$p.value))
 
 ## Income regularity
 INCOMECLEAN %>%
@@ -843,8 +887,6 @@ apa.cor.table(incomecor, filename = "INCOME_CORRELATIONS.doc", table.number = 1)
 
 
 ```
-
-
 
 
 ## Measurement equivalence of SJ items 
@@ -914,116 +956,205 @@ lavTestLRT(fit1.2, test = "D2", pool.robust = T)
 
 ```
 
-## Preliminary analyses - descriptives stats w/ anova
-## Means and SD's of SJ and other variables of interest
-```{r}
-ddply(INCOMECLEAN, .(Country), summarise,
-      "mean" = mean(System_Justification, na.rm = T), "sd" = sd(System_Justification, na.rm = T))
 
+
+### RESULTS ______________________________
+
+## Multilevel Modeling 
+## Hypotheses 1A - 1C
+
+
+```{r}
+## group-mean centering level 1 predictors
+INCOMECLEAN1 <- INCOMECLEAN %>%
+        drop_na(LOG10USDINCOME) %>%
+        group_by(Country) %>%
+        mutate(income_centered = LOG10USDINCOME - mean(LOG10USDINCOME))
+
+INCOMECLEAN2 <- INCOMECLEAN1 %>%
+        group_by(Country) %>%
+        mutate(education_centered = Education - mean(Education))
+
+## Removing extreme outcome outliers
+INCOMECLEAN2 <- subset(INCOMECLEAN2, income_centered <= 11)
+
+
+
+
+# Hypothesis 1A + H1B Objective SES predicting SJ
+
+## random intercept model
+H1_A_and_B_randommodel <- lmer(System_Justification ~ 1 + (1 | Country),
+                             data = INCOMECLEAN2, REML = F)
+summ(H1_A_and_B_randommodel)
+tab_model(H1_A_and_B_randommodel) ## 16% variance in SJ explained by country
+
+## Adding level 1 predictors
+H1_A_and_B <- lmer(System_Justification ~ 1 + income_centered + education_centered +
+                           age + Gender2 + 
+(1 + income_centered + education_centered | Country),
+                   data = INCOMECLEAN2, REML = F)
+
+summ(H1_A_and_B)
+tab_model(H1_A_and_B)
+
+## Visualize random effects in H1 A and B
+
+visualize(H1_A_and_B, plot = "model",
+          formula = System_Justification~income_centered + Country,
+          sample = 42)
+
+visualize(H1_A_and_B, plot = "model",
+          formula = System_Justification~education_centered + Country,
+          sample = 42)
+
+visualize(H1_A_and_B, plot = "residuals")
+
+# Hypothesis 1C - Relationship between subjective SES and SJ mediated by life sat
+## Group mean level 1 predictors
+library(mediation)
+
+INCOMECLEAN3 <- INCOMECLEAN %>%
+        drop_na(WellinSociety) %>%
+        group_by(Country) %>%
+        mutate(subjective_SES_centered = WellinSociety - mean(WellinSociety))
+
+INCOMECLEAN4 <- INCOMECLEAN3 %>%
+        group_by(Country) %>%
+        mutate(life_satisfaction_centered = Life_Satisfaction - mean(Life_Satisfaction))
+
+
+H1C_Mediate_model <- lmer(life_satisfaction_centered ~ subjective_SES_centered +
+                                  (1 | Country), 
+                          data = INCOMECLEAN4)
+
+tab_model(H1C_Mediate_model) ## checking A path
+
+H1C_Full_model <- lmer(System_Justification ~ 1 + life_satisfaction_centered + 
+                               subjective_SES_centered + 
+                               (1 + subjective_SES_centered|Country), 
+                       data = INCOMECLEAN4)
+
+H1C_results <- mediation::mediate(H1C_Mediate_model, H1C_Full_model,
+                       treat = "subjective_SES_centered", mediator = "life_satisfaction_centered", 
+                       boot = FALSE,
+                       sims = 1000, dropobs = TRUE)
+
+
+summary(H1C_results)
+estimates(H1C_Full_model)
 
 ```
 
-## ## Correlations between total income variables and perception of 
-## income stability and SJ after converting income to USD %
-
+## Hypotheses 2A - 2B
 ```{r, warning=FALSE}
-incomecor <- subset(INCOMECLEAN, 
-                    select = c(income_percent, LOGPPP, LOG10USDINCOME, 
-                               Life_Satisfaction, WellinSociety, RegIncome,
-                               Conspiracy_Theory, System_Justification, 
-                               FeelingThermometer_2, ClimateChange
-))
 
-chart.Correlation(incomecor)
+
+## group mean centering level 1 predictor and converting level 2 moderator to nominal 
+INCOMECLEAN$polpartypower_fac <- factor(INCOMECLEAN$polpartypower, levels = c(
+        0, 1, 2), labels = c("Right", "Center", "Left"))
+
+INCOMECLEAN5 <- INCOMECLEAN %>%
+        drop_na(PolOrientation) %>%
+        group_by(Country) %>%
+        mutate(PolOrientation_centered = PolOrientation - mean(PolOrientation))
+
+## Hypothesis 2A - Political ideology predicting SJ
+
+H2A <- lmer(System_Justification ~ PolOrientation_centered +
+                    (1 + PolOrientation_centered | Country), data = INCOMECLEAN5)
+
+summary(H2A)
+summ(H2A)
+tab_model(H2A)
+
+## Hypothesis 2B - Relationship between political ideology and SJ moderated by 
+## Political party in power
+
+H2B_base_model <- lmer(System_Justification ~ PolOrientation_centered  +
+                    (1 + PolOrientation_centered | Country), data = INCOMECLEAN5)
+
+
+
+H2B_Moderation_model <- lmer(System_Justification ~ PolOrientation_centered + 
+                                     polpartypower_fac + 
+                                     PolOrientation_centered*polpartypower_fac +
+                                     (1 + PolOrientation_centered | Country),
+                             data = INCOMECLEAN5)
+
+summary(H2B_Moderation_model)
+simple_slopes(H2B_Moderation_model)
+tab_model(H2B_Moderation_model)
+
+visualize(H2B_Moderation_model, plot = "model",
+          formula = System_Justification~PolOrientation_centered + Country | 
+                  polpartypower_fac,
+                  sample = 42)
+
+visualize(H2B_Moderation_model, plot = "residuals")
 ```
 
-## Writing income correlation to word
+
+## Hypotheses 3A - 3B
 ```{r}
-apa.cor.table(incomecor, filename = "INCOME_CORRELATIONS.doc", table.number = 1)
+## Grand mean centering GINI for multilevel models
+
+INCOMECLEAN$GINI <- scale(INCOMECLEAN$GINI, 
+                         center = T, scale = T)
+## Hypothesis 3A - Economic inequality predicting SJ
+
+H3A <- lmer(System_Justification ~ GINI + 
+                    (1 | Country),  data = INCOMECLEAN)
+summary(H3A)
+summ(H3A)
+tab_model(H3A)
+
+visualize(H3A, plot = "model",
+          formula = System_Justification~GINI + Country,
+          sample = 42)
+
+visualize(H3A, plot = "residuals")
+
+## Hypothesis 3B
+
+## Grand mean center social mobility for multilevel model
+INCOMECLEAN$Social_Mobility <- scale(INCOMECLEAN$Social_Mobility, 
+                         center = T, scale = T)
+
+H3B_base_model <- lmer(System_Justification ~ GINI +  
+                    (1 | Country),  data = INCOMECLEAN)
+
+
+H3B_Moderation_Model <- lmer(System_Justification ~ GINI*Social_Mobility +
+                                     (1 | Country), data = INCOMECLEAN)
+
+
+summary(H3B_Moderation_Model)
+summ(H3B_Moderation_Model)
+tab_model(H3B_Moderation_Model)
+
+visualize(H3B_Moderation_Model, plot = "model",
+          formula = System_Justification~Social_Mobility + Country | GINI,
+          sample = 42)
 ```
 
-## Individual Country specific correlations 
+## Hypothesis 4A - 4B
 ```{r}
+## Grand mean centering freedom/civil liberties
+INCOMECLEAN$Freedom <- scale(INCOMECLEAN$Freedom, 
+                         center = T, scale = T)
 
-## removing NA from income percent
-INCOMECLEAN2 <- INCOMECLEAN2[!(is.na(INCOMECLEAN2$income_percent)), ]
+## H4A & H4B - Freedom predicting SJ
+H4A_4B <- lmer(System_Justification ~ Freedom + (1 + Freedom | Country),
+               data = INCOMECLEAN)
 
+summary(H4A_4B)
+summ(H4A_4B)
+tab_model(H4A_4B)
 
-ddply(INCOMECLEAN2, .(Country), summarise,
-      "corr" = cor(RegIncome,
-                   income_percent, use = "complete.obs",
-                   method = "pearson"))
-
-ddply(INCOMECLEAN2, .(Country), summarise,
-      "corr" = cor(income_percent,
-                   WellinSociety, use = "complete.obs",
-                   method = "pearson"))
-
-ddply(INCOMECLEAN2, .(Country), summarise,
-      "corr" = cor(income_percent,
-                   Life_Satisfaction, use = "complete.obs", 
-                   method = "pearson"))
-
-ddply(INCOMECLEAN2, .(Country), summarise,
-      "corr" = cor(System_Justification,
-                   income_percent, use = "complete.obs",
-                   method = "pearson"))
-
-
-ddply(INCOMECLEAN2, .(Country), summarise,
-      "corr" = cor(SDO, 
-                   income_percent, use = "complete.obs",
-                   method = "pearson"))
-
-ddply(INCOMECLEAN2, .(Country), summarise,
-      "corr" = cor(income_percent,
-                   FeelingThermometer_2, use = "complete.obs",
-                   method = "pearson"))
-
-
-ddply(INCOMECLEAN2, .(Country), summarise,
-      "corr" = cor(income_percent,
-                   GlobalTrustInventory_Knowledge, use = "complete.obs",
-                   method = "pearson"))
-
-ddply(INCOMECLEAN2, .(Country), summarise,
-      "corr" = cor(income_percent,
-                   Meaning_of_Life, use = "complete.obs",
-                   method = "pearson"))
-
+visualize(H4A_4B, plot = "model",
+          sample = 42)
 ```
-
-## Writing data into SAV file to get country specifc correlations
-```{r}
-write_sav(INCOMECLEAN2, "Incomeclean2.sav")
-```
-
-
-
-## Multilevel Modeling
-
-```{r}
-## Hypothesis 1 A - C
-
-# Hypothesis 1A
-
-
-# Hypothesis 1B
-
-
-# Hypothesis 1C
-
-
-```
-
-
-
-
-
-
-
-
-
 
 ## _____________________________________________________________________________
 ## WAGES/INCOME ANALYSES FOR JAMES/STU
