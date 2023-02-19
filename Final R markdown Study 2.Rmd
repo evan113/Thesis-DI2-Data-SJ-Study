@@ -988,10 +988,12 @@ visualize(H1C_Full_model, plot = "model",
 ## group mean centering level 1 predictor and converting level 2 moderator to nominal 
 INCOMECLEAN$polpartypower_fac <- factor(INCOMECLEAN$polpartypower, levels = c(
         0, 1, 2), labels = c("Right", "Center", "Left"))
+
 INCOMECLEAN5 <- INCOMECLEAN %>%
         drop_na(PolOrientation) %>%
         group_by(Country) %>%
         mutate(PolOrientation_centered = PolOrientation - mean(PolOrientation))
+
 ## Hypothesis 2A - Political ideology predicting SJ
 H2A <- lmer(System_Justification ~ 1 + PolOrientation_centered +
                     (1 + PolOrientation_centered | Country), data = INCOMECLEAN5)
@@ -1019,62 +1021,115 @@ H2B_Moderation_model <- lmer(System_Justification ~ 1 + PolOrientation_centered 
 summary(H2B_Moderation_model)
 simple_slopes(H2B_Moderation_model)
 tab_model(H2B_Moderation_model)
+
 visualize(H2B_Moderation_model, plot = "model",
           formula = System_Justification~PolOrientation_centered + Country | 
                   polpartypower_fac,
                   sample = 42)
+
 visualize(H2B_Moderation_model, plot = "residuals")
 
 ## Building a table for both h2a and h2b
 tab_model(H2A, H2B_Moderation_model, file = "H2A_B_Model.doc")
 ```
 
-
-## Hypotheses 3A - 3B
+## Hypotheses 3A - 3B at the region level
 ```{r}
 ## Grand mean centering GINI for multilevel models
 INCOMECLEAN$GINI <- scale(INCOMECLEAN$GINI, 
                          center = T, scale = T)
+
 ## Hypothesis 3A - Economic inequality predicting SJ
-H3A <- lmer(System_Justification ~ GINI + 
-                    (1 | Country),  data = INCOMECLEAN)
+H3A <- lmer(System_Justification ~ 1 + GINI + 
+                    (1 | Region),  data = INCOMECLEAN)
 summary(H3A)
-summ(H3A)
 tab_model(H3A)
 visualize(H3A, plot = "model",
-          formula = System_Justification~GINI + Country,
-          sample = 42)
+          formula = System_Justification~GINI + Region, sample = 10)
+
 visualize(H3A, plot = "residuals")
 ## Hypothesis 3B
 ## Grand mean center social mobility for multilevel model
 INCOMECLEAN$Social_Mobility <- scale(INCOMECLEAN$Social_Mobility, 
                          center = T, scale = T)
-H3B_base_model <- lmer(System_Justification ~ GINI +  
-                    (1 | Country),  data = INCOMECLEAN)
-H3B_Moderation_Model <- lmer(System_Justification ~ GINI*Social_Mobility +
-                                     (1 | Country), data = INCOMECLEAN)
+
+H3B_base_model <- lmer(System_Justification ~ 1 + GINI +  
+                    (1 | Region),  data = INCOMECLEAN)
+
+H3B_Moderation_Model <- lmer(System_Justification ~ 1 + GINI*Social_Mobility +
+                                     (1 | Region), data = INCOMECLEAN)
 summary(H3B_Moderation_Model)
-summ(H3B_Moderation_Model)
 tab_model(H3B_Moderation_Model)
 visualize(H3B_Moderation_Model, plot = "model",
-          formula = System_Justification~Social_Mobility + Country | GINI,
-          sample = 42)
+          formula = System_Justification~Social_Mobility + Region | GINI,
+          sample = 10)
+
+## Building table for H3A and B at region level
+tab_model(H3A, H3B_Moderation_Model, file = "H3A_B_Region_Model.doc")
+
 ```
 
-## Hypothesis 4A - 4B
+## Hypotheses 3A - 3B at the Country level
+```{r}
+## Hypothesis 3A - Economic inequality predicting SJ
+H3A_Country <- lmer(System_Justification ~ 1 + GINI + 
+                    (1 | Country),  data = INCOMECLEAN)
+summary(H3A_Country)
+tab_model(H3A_Country)
+visualize(H3A_Country, plot = "model",
+          formula = System_Justification~GINI + Country, sample = 42)
+
+visualize(H3A_Country, plot = "residuals")
+## Hypothesis 3B
+
+H3B_base_model_Country <- lmer(System_Justification ~ 1 + GINI +  
+                    (1 | Country),  data = INCOMECLEAN)
+
+H3B_Moderation_Model_Country <- lmer(System_Justification ~ 1 + GINI*Social_Mobility +
+                                     (1 | Country), data = INCOMECLEAN)
+summary(H3B_Moderation_Model_Country)
+tab_model(H3B_Moderation_Model_Country)
+visualize(H3B_Moderation_Model_Country, plot = "model",
+          formula = System_Justification~Social_Mobility + Country | GINI,
+          sample = 42)
+
+## Building table for H3A and B at region level
+tab_model(H3A_Country, H3B_Moderation_Model_Country, file = "H3A_B_Country_Model.doc")
+```
+
+## Hypothesis 4A - 4B at the country level
 ```{r}
 ## Grand mean centering freedom/civil liberties
 INCOMECLEAN$Freedom <- scale(INCOMECLEAN$Freedom, 
                          center = T, scale = T)
-## H4A & H4B - Freedom predicting SJ
-H4A_4B <- lmer(System_Justification ~ Freedom + (1 + Freedom | Country),
+## H4A & H4B - Freedom predicting SJ at Country level
+H4A_4B_Country_model <- lmer(System_Justification ~ 1 + Freedom + (1 | Country),
                data = INCOMECLEAN)
-summary(H4A_4B)
-summ(H4A_4B)
-tab_model(H4A_4B)
-visualize(H4A_4B, plot = "model",
+summary(H4A_4B_Country_model)
+tab_model(H4A_4B_Country_model)
+visualize(H4A_4B_Country_model, plot = "model",
           sample = 42)
+
+## Building table for H4A and B at Country level
+tab_model(H4A_4B_Country_model, file = "H4A_B_Country_Model.doc")
 ```
+
+## Hypotheses 4A - 4B at the Region level
+```{r}
+## H4A & H4B - Freedom predicting SJ at Country level
+H4A_4B_Region_model <- lmer(System_Justification ~ 1 + Freedom + (1 | Region),
+               data = INCOMECLEAN)
+summary(H4A_4B_Region_model)
+tab_model(H4A_4B_Region_model)
+visualize(H4A_4B_Region_model, plot = "model",
+          sample = 10)
+
+## Building table for H4A and B at Region level
+tab_model(H4A_4B_Region_model, file = "H4A_B_Region_Model.doc")
+```
+
+
+
 
 ## _____________________________________________________________________________
 ## WAGES/INCOME ANALYSES FOR JAMES/STU
