@@ -9,12 +9,10 @@ output: html_document
 ## Set working directory----
 setwd("/Users/Evanvaldes1/Desktop/MASSEY/STUDY 2/CODE AND DATA/Thesis-DI2-Data-SJ-Study")
 ```
-
 ```{r}
 library(dplyr)
 library(stringr)
 library(readr)
-library(Hmisc)
 library(ggplot2)
 library(psych) ## Can use for within and between correlations statsBy()
 library(haven)
@@ -916,26 +914,31 @@ INCOMECLEAN2 <- subset(INCOMECLEAN2, income_centered <= 11)
 H1_A_and_B_randommodel <- lmer(System_Justification ~ 1 + (1 | Country),
                              data = INCOMECLEAN2, REML = F)
 
-summ(H1_A_and_B_randommodel)
+
 tab_model(H1_A_and_B_randommodel) ## 16% variance in SJ explained by country
 
 ## Adding level 1 predictors
-H1_A_and_B <- lmer(System_Justification ~ 1 + income_centered + education_centered +
-(1 + income_centered + education_centered | Country),
+H1_A_and_B_income <- lmer(System_Justification ~ 1 + income_centered +
+(1 + income_centered | Country),
                    data = INCOMECLEAN2, REML = F)
-summ(H1_A_and_B)
+
+H1_A_and_B_education <- lmer(System_Justification ~ 1 + education_centered +
+(1 + education_centered | Country),
+                   data = INCOMECLEAN2, REML = F)
+summary(H1_A_and_B_income)
+summary(H1_A_and_B_education)
 
 ## building a table for both h1a and h1b
-tab_model(H1_A_and_B)
+tab_model(H1_A_and_B_income, H1_A_and_B_education, file = "H1A_B_model.doc")
 
 ## Visualize random effects in H1 A and B
-plot_h1a_b_1 <- visualize(H1_A_and_B, plot = "model",
+plot_h1a_b_1  <- visualize(H1_A_and_B_income, plot = "model",
           formula = System_Justification~income_centered + Country,
-          sample = 42)
+          sample = 42) 
 
-plot_h1a_b_2 <- visualize(H1_A_and_B, plot = "model",
+plot_h1a_b_2 <- visualize(H1_A_and_B_education, plot = "model",
           formula = System_Justification~education_centered + Country,
-          sample = 42)
+          sample = 42) 
 
 visualize(H1_A_and_B, plot = "residuals")
 
@@ -979,10 +982,6 @@ visualize(H1C_Full_model, plot = "model",
          data = INCOMECLEAN4, se = FALSE, method = "lm", sample = 100)
 ```
 
-## Creating plots for H1a - H1C
-```{r}
-cowplot::plot_grid(plot_h1a_b_1, plot_h1a_b_2, nrow = 1)
-```
 
 ## Hypotheses 2A - 2B
 ```{r, warning=FALSE}
@@ -994,20 +993,29 @@ INCOMECLEAN5 <- INCOMECLEAN %>%
         group_by(Country) %>%
         mutate(PolOrientation_centered = PolOrientation - mean(PolOrientation))
 ## Hypothesis 2A - Political ideology predicting SJ
-H2A <- lmer(System_Justification ~ PolOrientation_centered +
+H2A <- lmer(System_Justification ~ 1 + PolOrientation_centered +
                     (1 + PolOrientation_centered | Country), data = INCOMECLEAN5)
 summary(H2A)
-summ(H2A)
 tab_model(H2A)
+
+
 ## Hypothesis 2B - Relationship between political ideology and SJ moderated by 
 ## Political party in power
-H2B_base_model <- lmer(System_Justification ~ PolOrientation_centered  +
+H2B_base_model <- lmer(System_Justification ~ 1 + PolOrientation_centered  +
                     (1 + PolOrientation_centered | Country), data = INCOMECLEAN5)
-H2B_Moderation_model <- lmer(System_Justification ~ PolOrientation_centered + 
+
+## Setting reference level for pol party in power
+reference_level <- "Right"
+INCOMECLEAN5$polpartypower_fac <- relevel(INCOMECLEAN5$polpartypower_fac,
+                                          ref = reference_level)
+
+H2B_Moderation_model <- lmer(System_Justification ~ 1 + PolOrientation_centered + 
                                      polpartypower_fac + 
                                      PolOrientation_centered*polpartypower_fac +
                                      (1 + PolOrientation_centered | Country),
                              data = INCOMECLEAN5)
+
+
 summary(H2B_Moderation_model)
 simple_slopes(H2B_Moderation_model)
 tab_model(H2B_Moderation_model)
@@ -1016,6 +1024,9 @@ visualize(H2B_Moderation_model, plot = "model",
                   polpartypower_fac,
                   sample = 42)
 visualize(H2B_Moderation_model, plot = "residuals")
+
+## Building a table for both h2a and h2b
+tab_model(H2A, H2B_Moderation_model, file = "H2A_B_Model.doc")
 ```
 
 
