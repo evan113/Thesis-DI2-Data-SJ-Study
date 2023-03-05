@@ -9,6 +9,7 @@ output: html_document
 ## Set working directory----
 setwd("/Users/Evanvaldes1/Desktop/MASSEY/STUDY 2/CODE AND DATA/Thesis-DI2-Data-SJ-Study")
 ```
+
 ```{r}
 library(dplyr)
 library(stringr)
@@ -1018,46 +1019,91 @@ plot1 <- plot_grid(plot_h1a_b_1, plot_h1a_b_2)
 save_plot("H1A_B_Plot.png", plot = plot1)
 ```
 
-# Hypothesis 1C - Relationship between subjective SES and SJ mediated by life sat
+# Hypothesis 1C - Relationship between subjective SES and SJ mediated by LS
 ```{r}
-
-## Group mean level 1 predictors
+## Grand mean centering level 1 predictor/mediator
+H1C_H4B_DATA$WellinSociety <- scale(H1C_H4B_DATA$WellinSociety, 
+                                    center = T, scale = F)
+H1C_H4B_DATA$Life_Satisfaction <- scale(H1C_H4B_DATA$Life_Satisfaction,
+                                        center = T, scale = F)
 library(mediation)
-INCOMECLEAN3 <- INCOMECLEAN %>%
-        drop_na(WellinSociety) %>%
-        group_by(Country) %>%
-        mutate(subjective_SES_centered = WellinSociety - mean(WellinSociety))
 
-INCOMECLEAN4 <- INCOMECLEAN3 %>%
-        group_by(Country) %>%
-        mutate(life_satisfaction_centered = Life_Satisfaction - mean(Life_Satisfaction))
+## checking A path / creating A path for mediate model
+H1C_Mediate_model <- lmer(Life_Satisfaction ~ WellinSociety +
+                                  (1 + WellinSociety | Country), 
+                          data = H1C_H4B_DATA, REML = F, control = lmerControl(optimizer = "bobyqa"))
 
-H1C_Mediate_model <- lmer(life_satisfaction_centered ~ subjective_SES_centered +
-                                  (1 | Country), 
-                          data = INCOMECLEAN4, REML = F)
+summary(H1C_Mediate_model)
+tab_model(H1C_Mediate_model)
 
-tab_model(H1C_Mediate_model) ## checking A path
+## Checking B path
+b_path <- lmer(System_Justification ~ 1 + Life_Satisfaction + WellinSociety+ age + Gender2 +
+                       (1|Country), data = H1C_H4B_DATA, REML = F,
+               control = lmerControl(optimizer = "bobyqa"))
 
-H1C_Full_model <- lmer(System_Justification ~ 1 + life_satisfaction_centered + 
-                               subjective_SES_centered + 
-                               (1 + subjective_SES_centered|Country), 
-                       data = INCOMECLEAN4, REML = F)
+summary(b_path)
+tab_model(b_path)
+
+## Checking C path
+c_path <- lmer(System_Justification ~ 1 + WellinSociety + age + Gender2 +
+                       (1 + WellinSociety | Country),
+               data = H1C_H4B_DATA, REML = F, 
+               control = lmerControl(optimizer = "bobyqa"))
+
+summary(c_path)
+tab_model(c_path)
+
+
+H1C_Full_model <- lmer(System_Justification ~ 1 + Life_Satisfaction +
+  WellinSociety + age + Gender2 +
+  (1 + WellinSociety | Country),
+data = H1C_H4B_DATA, REML = F, control = lmerControl(optimizer = "bobyqa")
+)
+
+summary(H1C_Full_model)
+tab_model(H1C_Full_model)
+## Evidence of partial mediation 
+## Bivariate relationship between subjective SES (wellinsociety) and SJ 
+## Decreases after the introduction of mediator (life satisfaction)
+## Does not allow age gender to have random slopes in model - we will continue
+## to control for both age and gender but remove them from the random effects
 
 H1C_results <- mediation::mediate(H1C_Mediate_model, H1C_Full_model,
-                       treat = "subjective_SES_centered", mediator = "life_satisfaction_centered", 
-                       boot = FALSE,
+                       treat = "WellinSociety", mediator = "Life_Satisfaction", 
                        sims = 1000, dropobs = TRUE)
+
 summary(H1C_results)
 estimates(H1C_Full_model)
 tab_model(H1C_Full_model)
 
 visualize(H1C_Full_model, plot = "model",
-          formula = System_Justification~subjective_SES_centered + Country |
-                  life_satisfaction_centered,
-          sample = 42)
+          formula = System_Justification~WellinSociety + Country |
+                  Life_Satisfaction,
+          sample = 42, raw.data = F)
 
- flexplot(System_Justification~subjective_SES_centered + life_satisfaction_centered,
-         data = INCOMECLEAN4, se = FALSE, method = "lm", sample = 100)
+ flexplot(System_Justification~WellinSociety + Life_Satisfaction,
+         data = H1C_H4B_DATA, se = FALSE, method = "lm", sample = 100)
+ 
+ mediate_plot(System_Justification ~ Life_Satisfaction + WellinSociety, 
+              data = H1C_H4B_DATA) 
+ ## Visualization of the partial mediation relationship between 
+ ## black line is the direct effect prior to introduction of mediator, 
+ ## Blue line is the relationship once you take into account the mediator 
+ 
+ ## Sobel test 
+ library(multilevel)
+ sobel(H1C_H4B_DATA$WellinSociety, H1C_H4B_DATA$Life_Satisfaction,
+       H1C_H4B_DATA$System_Justification)
+
+## Indirect effect is sig < .05
+## the indirect effect is positive (0.06906148), which means that higher levels 
+## of subjective SES in society are associated with higher levels of system 
+## justification through the mediator of life satisfaction.
+## the indirect effect has a medium strength (0.06906148), indicating that the 
+## mediator explains a moderate proportion of the total effect.
+## Overall, the Sobel test suggests that life satisfaction partially mediates the 
+## relationship between well-being in society and system justification, with a 
+## significant positive indirect effect
 ```
 
 
