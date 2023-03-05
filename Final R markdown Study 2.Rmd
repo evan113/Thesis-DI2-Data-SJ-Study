@@ -37,11 +37,12 @@ library(readxl)
 library(reghelper) # Simple slopes for interactions
 library(mlma) # Multilevel mediation analysis
 library(cowplot) ## multiplots
+library(influence.ME) ## Calculating cooks distance
 ```
 
 ## Opening indvidual and country level data
 ```{r}
-full_evan_dataset <- read_sav("Full Evan Dataset.zip")
+full_evan_dataset <- read_sav("RAW DI2 DATA/Full Evan Dataset.zip")  
 
 country_level <- read_sav("Country level analysis for DI2.zip")
 ```
@@ -173,22 +174,13 @@ any(is.na(dat2))
 sum(is.na(dat2))
 colSums(is.na(dat2))
 which(is.na(dat2$Country))
-
 ## Removing missing values from the country column
 dat2 <- dat2[!(is.na(dat2$Country)), ]
-
-## DON'T RUN FOR NOW
-dat2 <- dat2[!(is.na(dat2$PolOrientation)), ]
-dat2 <- dat2[!(is.na(dat2$Conspiracy_Theory)), ]
 ```
 
-## Summary of income data
+## turning of scientific notation
 ```{r}
-options(scipen = 999) # turning off scientific notation
-summary(dat2$Income_1)
-summary(dat2$Income_2)
-summary(dat2$Income_3)
-summary(dat2$Income_4)
+options(scipen = 999) 
 ```
 
 ## Creating new variable - how did participants report income
@@ -201,8 +193,6 @@ dat2[ which(dat2$Income_3 != FALSE), "income_report" ] = "Monthly"
 dat2[ which(dat2$Income_4 != FALSE), "income_report" ] = "Annually"
 dat2$income_report <- factor(dat2$income_report, levels = c("Annually", "Monthly",
                                                             "Weekly", "Daily"))
-## DONT RUN FOR NOW
-dat2 <- dat2[!(is.na(dat2$income_report)), ]
 ```
 
 
@@ -248,9 +238,6 @@ dat2$income_report2[dat2$income_report == "Weekly"] = "2"
 dat2$income_report2[dat2$income_report == "Monthly"] = "3"
 dat2$income_report2[dat2$income_report == "Annually"] = "4"
 dat2$income_report2 <- as.numeric(dat2$income_report2)
-
-## DON'T RUN FOR NOW
-dat2 <- dat2[!(is.na(dat2$income_report2)), ]
 ```
 
 ## Conspiracy theory graphs of interest
@@ -637,7 +624,7 @@ dat2 <- dat2 %>%
 ## Making a subset of the data for ANALYSES
 ```{r}
 INCOMECLEAN <- subset(dat2, select = c(
-  "Country", "Region", "age", "Gender", "PolOrientation", "Total_Income_usd",
+  "ResponseId","Country", "Region", "age", "Gender", "PolOrientation", "Total_Income_usd",
   "PPP", "LOG10USDINCOME", "LOGPPP", "income_percent", "RegIncome", "income_report",
   "income_report2", "Education", "WellinSociety", "LifeSatisfatction_1", 
   "LifeSatisfatction_2", "Life_Satisfaction", "SJ1", "SJ2", "SJ3", "SJ4", 
@@ -696,14 +683,10 @@ INCOMECLEAN <- INCOMECLEAN %>%
 ```{r}
 ## RUN THIS LINE OF CODE WHEN ONLY GETTING DESCRIPTIVE (REMOVING GENDER NA'S)
 INCOMECLEAN <- INCOMECLEAN[!(is.na(INCOMECLEAN$Gender)), ]
-
-INCOMECLEAN$Gender2 <- factor(INCOMECLEAN$Gender, levels = c(1, 2),
+INCOMECLEAN$Gender2 <- factor(INCOMECLEAN$Gender2, levels = c(1, 2),
                               labels = c("Male", "Female"))
-
 label(INCOMECLEAN$age) <- "Age"
-
 label(INCOMECLEAN$Gender2) <- "Gender"
-
 ## Creating descriptive for demographics
 summary(INCOMECLEAN$Gender2)
 mean(INCOMECLEAN$age, na.rm = T)
@@ -784,6 +767,8 @@ INCOMECLEAN %>%
         drop_na(LOG10USDINCOME) %>%
         do(data.frame(correlation = cor(.$System_Justification, .$LOG10USDINCOME, method = "pearson"),
                       pvalue = cor.test(.$System_Justification, .$LOG10USDINCOME)$p.value))
+
+cor(System_Justification, LOG10USDINCOME)
 ## Income regularity
 INCOMECLEAN %>%
         group_by(Country) %>%
@@ -811,7 +796,7 @@ INCOMECLEAN %>%
 ## Life Satisfaction
 INCOMECLEAN %>%
         group_by(Country) %>%
-        drop_na(Life_Satisfaction) %>%
+        drop_na(Life_Satisfaction, System_Justification) %>%
         do(data.frame(correlation = cor(.$System_Justification, .$Life_Satisfaction, method = "pearson"),
                       pvalue = cor.test(.$System_Justification, .$Life_Satisfaction)$p.value))
 ## National Identity
@@ -834,135 +819,229 @@ apa.cor.table(incomecor, filename = "INCOME_CORRELATIONS.doc", table.number = 1)
 ```
 
 
-## Measurement equivalence of SJ items 
-## CFA USING LAVAAN
+## Calculating ICC's for each variable of interest
 ```{r}
-## Overall model
-## We may have to drop SJ1 - leads to poor fit indices
-## Better fitting model is a 4 factor model with SJ1 removed for better fit
-## Paper to read about RMSEA issues and their commonality
-## Kenny, Kaniskan, and Mccoach, 2015
-## Main take away - For models with small df, the RMSEA can exceed cutoffs
-## very often, even when the model is correctly specified
-## Kenny et al. (2015) recommends checking alternative models with additional paths
-## Following Kenny et al. (2015) recs, I increased the size of the model to 
-## to include all related measured variables of interest 
-## (i.e., SJ/Objective and Subjective SES/Political ideology/Life Satisfaction)
-## Added education to objective SES - and it was causing 
-## heywood cases / negative estimate warnings / same was said for 
-## life_satisfaction_2 so both were removed from the model 
-## At the moment fit indices are strong for every except scalar invariance 
-## where only the RMSEA is elevated at .104
-# UNIDIMENSIONAL MODEL
-SJfit <- 'SYSJ =~ SJ1 + SJ2 + SJ3 + SJ4'
-# MULTI MODEL
-MULTI_SJfit <- 'SYSJ =~ SJ1 + SJ2 + SJ3 + SJ4
-OSES =~ LOG10USDINCOME 
-SSES =~ WellinSociety
-LS =~ LifeSatisfatction_1'
-overall.fit <- cfa(model = SJfit, data = INCOMECLEAN, meanstructure = T)
-summary(overall.fit, rsquare = T, fit.measure = T)
-## DF = 
-## Group Measurement equivalence
-## Configural invariance
-fit1 <- cfa(SJfit, data = INCOMECLEAN, meanstructure = T, group = "Country")
-summary(fit1, standardized = T, fit.measures = T, rsquare = T)
-## DF = 252, 
-## CFI = .967
-## Metric Invariance
-fit1.1 <- cfa(SJfit, data = INCOMECLEAN,  group = "Country", 
-              group.equal = "loadings")
-summary(fit1.1, standardized = T, fit.measures = T, rsquare = T)
-## DF = 207
-##CFI = .956
-## Scalar Invariance
-fit1.2 <- cfa(SJfit, data = INCOMECLEAN,
-            group = "Country", group.equal = c("intercepts", "loadings"))
-summary(fit1.2, standardized = T, fit.measures = T, rsquare = T)
-## DF = 330
-## CFI = .866
-## model comparison tests (comparison to fit1 to fit1.1 is the main thing that establishes weak invariance)
-lavTestLRT(fit1, test = "D2", pool.robust = T)
-lavTestLRT(fit1.1, test = "D2", pool.robust = T)
-lavTestLRT(fit1.2, test = "D2", pool.robust = T)
+## SJ
+icc_sj <- lmer(System_Justification ~ 1 + (1|Country), data = INCOMECLEAN)
+ICC(icc_sj)
+
+## income
+icc_income <- lmer(LOG10USDINCOME ~ 1 + (1|Country), data = INCOMECLEAN)
+ICC(icc_income)
+##education
+icc_education <- lmer(Education ~ 1 + (1|Country), data=INCOMECLEAN)
+ICC(icc_education)
+
+## subjective SES
+icc_subjective_ses <- lmer(WellinSociety ~ 1 + (1|Country), data = INCOMECLEAN)
+ICC(icc_subjective_ses)
+
+## Life Satisfaction
+icc_life_satisfaction <- lmer(Life_Satisfaction ~ 1 + (1|Country), data = INCOMECLEAN)
+ICC(icc_life_satisfaction)
+
+## Political orientation
+icc_political_orientation <- lmer(PolOrientation ~ 1 + (1|Country), data = INCOMECLEAN)
+ICC(icc_political_orientation)
+
+## AGE
+icc_age <- lmer(age ~ 1 + (1|Country), data = INCOMECLEAN)
+ICC(icc_age)
+
+## Gender
+icc_gender <- lmer(Gender ~ 1 + (1|Country), data = INCOMECLEAN)
+ICC(icc_gender)
+```
+## modeling univariates
+```{r}
+flexplot(System_Justification~1, INCOMECLEAN)
+flexplot(Education~1, INCOMECLEAN)
+flexplot(income_centered~1, INCOMECLEAN2)
+flexplot(WellinSociety~1, INCOMECLEAN)
+flexplot(PolOrientation~1, INCOMECLEAN)
+flexplot(Life_Satisfaction~1, INCOMECLEAN)
 ```
 
+## Data prep for H1A-H1B
+```{r}
+## Grand mean centering level 1 and level 2 variables
+INCOMECLEAN$age <- scale(INCOMECLEAN$age, center = T, scale = F)
 
+INCOMECLEAN$income_centered = NA
+INCOMECLEAN$income_centered <- scale(INCOMECLEAN$LOG10USDINCOME, center = T, scale = F)
+
+INCOMECLEAN$education_centered = NA
+INCOMECLEAN$education_centered <- scale(INCOMECLEAN$Education, center = T, scale = F)
+
+INCOMECLEAN$PolOrientation <- scale(INCOMECLEAN$PolOrientation,
+                          center = T, scale = F)
+
+INCOMECLEAN$Social_Mobility <- scale(INCOMECLEAN$Social_Mobility, 
+                         center = T, scale = F)
+
+INCOMECLEAN$Freedom <- scale(INCOMECLEAN$Freedom, 
+                         center = T, scale = F)
+
+INCOMECLEAN$GINI <- scale(INCOMECLEAN$GINI, center = T, scale = F)
+
+## Creating seperate dataset for H1A and H1B tests due to removal of extreme
+## Values
+## Removing extreme  outliers from income
+INCOMECLEAN2 <- INCOMECLEAN
+INCOMECLEAN2 <- subset(INCOMECLEAN2, income_centered <= 7)
+INCOMECLEAN2 <- subset(INCOMECLEAN2, income_centered >= -6)
+```
+
+## Writing two working datasets for analyses
+```{r}
+write_sav(INCOMECLEAN2, "H1A and H1B Data")
+
+write_sav(INCOMECLEAN, "H1C_to_H4B_Data")
+```
+
+## START RUNNING CODE FROM HERE ________________________________________________
+## Calling up WORKING datasets
+```{r}
+H1A_H1B_DATA <- read_sav("H1A and H1B Data")
+
+H1C_H4B_DATA <- read_sav("H1C_to_H4B_Data")
+```
 
 ### RESULTS ______________________________
+## Please NOTE THAT WE ARE NOT USING FORWARD STEPPING IN BUILDING ANY OF THE 
+## FOLLOWING MULTILEVEL MODELS AS RECOMMENDED BY NEZLEK (2008) AS WE ARE 
+## FIRST ATTEMPTING TO FIT THE DESIRED PREREGISTERED (COMPLEX) MODELS FIRST AND
+## COMPARING THEM TO SIMILAR YET LESS COMPLEX MODELS W/ THE REMOVAL OF SPECIFIC
+## RANDOM EFFECTS. AFTER COMPARISONS WE LOOK AT RESIDUAL DISTRIBUTIONS OF MODELS 
+## SPECIFIFED AND TAKE INTO ACCOUNT CONVERGENCE ISSUES AND ATTEMPT TO REDUCE USING
+## RECOMMENDED METHODS BY MEYTERD & DAVIES (2020). WE STATE IN CODE CHUNKS WHEN
+## WE OPT TO SELECT THE LESS COMPLEX MODEL
+
+## Chaning gender to nonnumeric
+```{r}
+H1A_H1B_DATA$Gender2 <- factor(H1A_H1B_DATA$Gender2, levels = c(1, 2),
+                              labels = c("Male", "Female"))
+
+H1C_H4B_DATA$Gender2 <- factor(H1C_H4B_DATA$Gender2, levels = c(1, 2),
+                              labels = c("Male", "Female"))
+```
 
 ## Multilevel Modeling 
 ## Hypotheses 1A - 1C
+```{r}
+## Intercept only model
+SJ_NULLMODEL <- lmer(System_Justification ~ 1 + (1 | Country),
+                             data = H1A_H1B_DATA, REML = F)
 
+tab_model(SJ_NULLMODEL)
+
+## random intercept null model 
+SJ_NULLMODEL <- lmer(System_Justification ~ 1 + (1 | Country),
+                             data = H1C_H4B_DATA, REML = F)
+tab_model(SJ_NULLMODEL) ## 17% variance in SJ explained by country
+summary(SJ_NULLMODEL)
+estimates(SJ_NULLMODEL) ## Design effect
+
+## Calculate the 95% CI for the ICC
+ICC(SJ_NULLMODEL)
+library(ICC)
+ICCest(x = Country, y = System_Justification, 
+       data = H1C_H4B_DATA, alpha = 0.05, CI.type = "THD")
+```
 
 ```{r}
-## group-mean centering level 1 predictors
-INCOMECLEAN1 <- INCOMECLEAN %>%
-        drop_na(LOG10USDINCOME) %>%
-        group_by(Country) %>%
-        mutate(income_centered = LOG10USDINCOME - mean(LOG10USDINCOME))
-
-INCOMECLEAN2 <- INCOMECLEAN1 %>%
-        group_by(Country) %>%
-        mutate(education_centered = Education - mean(Education))
-
-## Removing extreme outcome outliers
-INCOMECLEAN2 <- subset(INCOMECLEAN2, income_centered <= 11)
-
 # Hypothesis 1A + H1B Objective SES predicting SJ
-## random intercept model
-H1_A_and_B_randommodel <- lmer(System_Justification ~ 1 + (1 | Country),
-                             data = INCOMECLEAN2, REML = F)
 
 
-tab_model(H1_A_and_B_randommodel) ## 16% variance in SJ explained by country
 
-## Adding level 1 predictors
-H1_A_and_B_income <- lmer(System_Justification ~ 1 + income_centered +
-(1 + income_centered | Country),
-                   data = INCOMECLEAN2, REML = F)
+## Model 2 -introducing level one preidctors and random intercepts/slopes for 
+##income and education
+H1A_B_Reduced2 <- lmer(System_Justification ~ 1 + income_centered + education_centered + Gender2 + age +
+  (1 + income_centered + education_centered | Country),
+data = H1A_H1B_DATA, REML = F,
+control = lmerControl(optimizer = "bobyqa")
+) ## Converged
 
-H1_A_and_B_education <- lmer(System_Justification ~ 1 + education_centered +
-(1 + education_centered | Country),
-                   data = INCOMECLEAN2, REML = F)
-summary(H1_A_and_B_income)
-summary(H1_A_and_B_education)
+summary(H1A_B_Reduced2)
+
+
+H1A_B_full <- lmer(System_Justification ~ 1 + income_centered + education_centered + Gender2 + age +
+  (1 + income_centered + education_centered | Country) + (0 + Gender2 + age | Country),
+data = H1A_H1B_DATA, REML = F,
+control = lmerControl(optimizer = "bobyqa")
+) ## Converges
+
+summary(H1A_B_full)
+
+## model comparison
+model.comparison(H1A_B_full, SJ_NULLMODEL)
+model.comparison(H1A_B_full, H1A_B_Reduced2)
+visualize(H1A_B_full, plot = "residuals")
+
+anova(SJ_NULLMODEL, H1A_B_Reduced2, H1A_B_full)
+## Residuals within full model look normally distributed and model comparison
+## favors the full model at all levels
+
+
+## results for best fitting model
+summary(H1A_B_full)
+estimates(H1A_B_full) ## ICC and design effect provide support for multilevel modeling
+tab_model(H1A_B_full)
+
 
 ## building a table for both h1a and h1b
-tab_model(H1_A_and_B_income, H1_A_and_B_education, file = "H1A_B_model.doc")
+tab_model(SJ_NULLMODEL, H1A_B_Reduced2, H1A_B_full, file = "H1A_B_model.doc")
 
 ## Visualize random effects in H1 A and B
-plot_h1a_b_1  <- visualize(H1_A_and_B_income, plot = "model",
-          formula = System_Justification~income_centered + Country,
-          sample = 42) 
+plot_h1a_b_1 <- visualize(H1A_B_Reduced,
+  plot = "model",
+  formula = System_Justification ~ income_centered + Country,
+  sample = 42, raw.data = F
+) +
+  labs(
+    x = "Income",
+    y = "System Justification"
+  )
 
-plot_h1a_b_2 <- visualize(H1_A_and_B_education, plot = "model",
-          formula = System_Justification~education_centered + Country,
-          sample = 42) 
+plot_h1a_b_2 <- visualize(H1A_B_Reduced,
+  plot = "model",
+  formula = System_Justification ~ education_centered + Country,
+  sample = 42, raw.data = F
+) +
+  labs(
+    x = "Education",
+    y = "System Justification"
+  )
 
-visualize(H1_A_and_B, plot = "residuals")
+plot1 <- plot_grid(plot_h1a_b_1, plot_h1a_b_2)
 
+save_plot("H1A_B_Plot.png", plot = plot1)
+```
 
 # Hypothesis 1C - Relationship between subjective SES and SJ mediated by life sat
+```{r}
+
 ## Group mean level 1 predictors
 library(mediation)
 INCOMECLEAN3 <- INCOMECLEAN %>%
         drop_na(WellinSociety) %>%
         group_by(Country) %>%
         mutate(subjective_SES_centered = WellinSociety - mean(WellinSociety))
+
 INCOMECLEAN4 <- INCOMECLEAN3 %>%
         group_by(Country) %>%
         mutate(life_satisfaction_centered = Life_Satisfaction - mean(Life_Satisfaction))
 
 H1C_Mediate_model <- lmer(life_satisfaction_centered ~ subjective_SES_centered +
                                   (1 | Country), 
-                          data = INCOMECLEAN4)
+                          data = INCOMECLEAN4, REML = F)
+
 tab_model(H1C_Mediate_model) ## checking A path
 
 H1C_Full_model <- lmer(System_Justification ~ 1 + life_satisfaction_centered + 
                                subjective_SES_centered + 
                                (1 + subjective_SES_centered|Country), 
-                       data = INCOMECLEAN4)
+                       data = INCOMECLEAN4, REML = F)
 
 H1C_results <- mediation::mediate(H1C_Mediate_model, H1C_Full_model,
                        treat = "subjective_SES_centered", mediator = "life_satisfaction_centered", 
@@ -971,7 +1050,6 @@ H1C_results <- mediation::mediate(H1C_Mediate_model, H1C_Full_model,
 summary(H1C_results)
 estimates(H1C_Full_model)
 tab_model(H1C_Full_model)
-
 
 visualize(H1C_Full_model, plot = "model",
           formula = System_Justification~subjective_SES_centered + Country |
@@ -983,146 +1061,351 @@ visualize(H1C_Full_model, plot = "model",
 ```
 
 
-## Hypotheses 2A - 2B
+## Hypotheses 2A - 2B at the country level
 ```{r, warning=FALSE}
-## group mean centering level 1 predictor and converting level 2 moderator to nominal 
-INCOMECLEAN$polpartypower_fac <- factor(INCOMECLEAN$polpartypower, levels = c(
-        0, 1, 2), labels = c("Right", "Center", "Left"))
 
-INCOMECLEAN5 <- INCOMECLEAN %>%
-        drop_na(PolOrientation) %>%
-        group_by(Country) %>%
-        mutate(PolOrientation_centered = PolOrientation - mean(PolOrientation))
+## Hypothesis 2A - Political ideology predicting SJ at country level
+H2A_country_full <- lmer(System_Justification ~ 1 + PolOrientation + age + Gender2 +
+                    (1 + PolOrientation | Country) + (0 + age + Gender2 | Country),
+                    data = H1C_H4B_DATA,
+                    REML = F, control=lmerControl(optimizer="bobyqa")) 
+## Converges 
 
-## Hypothesis 2A - Political ideology predicting SJ
-H2A <- lmer(System_Justification ~ 1 + PolOrientation_centered +
-                    (1 + PolOrientation_centered | Country), data = INCOMECLEAN5)
-summary(H2A)
-tab_model(H2A)
+## reduced/removal of random effects (i.e.,slopes) for gender and age
+H2A_country_reduced <- lmer(System_Justification ~ 1 + PolOrientation + age + Gender2 +
+                    (1 + PolOrientation | Country),
+                    data = H1C_H4B_DATA,
+                    REML = F) 
+## Converges
 
+## Model comparisons
+model.comparison(H2A_country_full, H2A_country_reduced) 
+visualize(H2A_country_full, plot = "residuals")
+## All model comparison factors favor the full model over the reduced
+## Based upon this, the better fitting  would be 
+## full model (Meteyard, L., & Davies, R. A.,  2020. Best practice guidance for 
+## linear mixed-effects models in psychological science. Journal of Memory and 
+## Language, 112, 104092.)
+
+
+estimates(H2A_country_full)
+summary(H2A_country_full)
+tab_model(H2A_country_full)
+
+H2A_plot_Country <- visualize(H2A_country_full, plot = "model",
+          formula = System_Justification~PolOrientation + Country,
+          sample = 42, raw.data = F) +
+        labs(x = "Political Orientation",
+             y = "System Justifcation")
 
 ## Hypothesis 2B - Relationship between political ideology and SJ moderated by 
 ## Political party in power
-H2B_base_model <- lmer(System_Justification ~ 1 + PolOrientation_centered  +
-                    (1 + PolOrientation_centered | Country), data = INCOMECLEAN5)
+H1C_H4B_DATA$polpartypower_fac <- factor(H1C_H4B_DATA$polpartypower, levels = c(
+        0, 1, 2), labels = c("Right", "Center", "Left"))
 
 ## Setting reference level for pol party in power
 reference_level <- "Right"
-INCOMECLEAN5$polpartypower_fac <- relevel(INCOMECLEAN5$polpartypower_fac,
+H1C_H4B_DATA$polpartypower_fac <- relevel(H1C_H4B_DATA$polpartypower_fac,
                                           ref = reference_level)
 
-H2B_Moderation_model <- lmer(System_Justification ~ 1 + PolOrientation_centered + 
-                                     polpartypower_fac + 
-                                     PolOrientation_centered*polpartypower_fac +
-                                     (1 + PolOrientation_centered | Country),
-                             data = INCOMECLEAN5)
+H2B_base_model_country <- lmer(System_Justification ~ 1 + PolOrientation + age + Gender2 +
+                    (1 + PolOrientation | Country) + (0 + age + Gender2 | Country),
+                    data = H1C_H4B_DATA,
+                    REML = F)
 
 
-summary(H2B_Moderation_model)
-simple_slopes(H2B_Moderation_model)
-tab_model(H2B_Moderation_model)
+H2B_Moderation_fullmodel_Country <- lmer(System_Justification ~ 1 + PolOrientation + 
+                                     polpartypower_fac + PolOrientation*polpartypower_fac +
+                                             age + Gender2 +
+                                     (1 + PolOrientation  | Country) + 
+                                             (0 + age + Gender2 | Country),
+                             data = H1C_H4B_DATA, REML = F,
+                             control=lmerControl(optimizer="bobyqa")) 
+## converges
 
-visualize(H2B_Moderation_model, plot = "model",
-          formula = System_Justification~PolOrientation_centered + Country | 
+## Reduced removal of random effects for age and gender ot check model comparisons
+H2B_Moderation_reducedmodel_Country <- lmer(System_Justification ~ 1 + PolOrientation + 
+                                     polpartypower_fac + PolOrientation*polpartypower_fac +
+                                             age + Gender2 +
+                                     (1 + PolOrientation | Country),
+                             data = H1C_H4B_DATA, REML = F)
+
+## Checking model comparison
+model.comparison(H2B_Moderation_fullmodel_Country, H2B_Moderation_reducedmodel_Country)
+visualize(H2B_Moderation_fullmodel_Country, plot = "residuals")
+## Residuals appear normally distributed in full model indicating good fit
+## Model comparisons favor the full model once again suggesting to ignore the 
+## lme4 convergence issues to report the better fitting model in accord with
+## (Meteyard & Davies, 2020)
+
+summary(H2B_Moderation_fullmodel_Country)
+simple_slopes(H2B_Moderation_fullmodel_Country)
+estimates(H2B_Moderation_fullmodel_Country)
+tab_model(H2B_Moderation_fullmodel_Country)
+
+H2B_plot_Country <- visualize(H2B_Moderation_fullmodel_Country, plot = "model",
+          formula = System_Justification~PolOrientation + Country | 
                   polpartypower_fac,
-                  sample = 42)
+                  sample = 42, raw.data = F) +
+         labs(x = "Political Orientation",
+                y = "System Justification")
 
-visualize(H2B_Moderation_model, plot = "residuals")
+
+plot2_country <- plot_grid(H2A_plot_Country, H2B_plot_Country, ncol = 2)
+
+save_plot("H2A_B_Plot_country.pdf", plot = plot2_country)
 
 ## Building a table for both h2a and h2b
-tab_model(H2A, H2B_Moderation_model, file = "H2A_B_Model.doc")
+tab_model(H2A_country_full, H2B_Moderation_fullmodel_Country, 
+          file = "H2A_B_country_Model.doc")
 ```
 
-## Hypotheses 3A - 3B at the region level
-```{r}
-## Grand mean centering GINI for multilevel models
-INCOMECLEAN$GINI <- scale(INCOMECLEAN$GINI, 
-                         center = T, scale = T)
 
-## Hypothesis 3A - Economic inequality predicting SJ
-H3A <- lmer(System_Justification ~ 1 + GINI + 
-                    (1 | Region),  data = INCOMECLEAN)
-summary(H3A)
-tab_model(H3A)
-visualize(H3A, plot = "model",
-          formula = System_Justification~GINI + Region, sample = 10)
-
-visualize(H3A, plot = "residuals")
-## Hypothesis 3B
-## Grand mean center social mobility for multilevel model
-INCOMECLEAN$Social_Mobility <- scale(INCOMECLEAN$Social_Mobility, 
-                         center = T, scale = T)
-
-H3B_base_model <- lmer(System_Justification ~ 1 + GINI +  
-                    (1 | Region),  data = INCOMECLEAN)
-
-H3B_Moderation_Model <- lmer(System_Justification ~ 1 + GINI*Social_Mobility +
-                                     (1 | Region), data = INCOMECLEAN)
-summary(H3B_Moderation_Model)
-tab_model(H3B_Moderation_Model)
-visualize(H3B_Moderation_Model, plot = "model",
-          formula = System_Justification~Social_Mobility + Region | GINI,
-          sample = 10)
-
-## Building table for H3A and B at region level
-tab_model(H3A, H3B_Moderation_Model, file = "H3A_B_Region_Model.doc")
-
-```
 
 ## Hypotheses 3A - 3B at the Country level
 ```{r}
 ## Hypothesis 3A - Economic inequality predicting SJ
-H3A_Country <- lmer(System_Justification ~ 1 + GINI + 
-                    (1 | Country),  data = INCOMECLEAN)
-summary(H3A_Country)
-tab_model(H3A_Country)
-visualize(H3A_Country, plot = "model",
-          formula = System_Justification~GINI + Country, sample = 42)
+H3A_full_Country <- lmer(System_Justification ~ GINI + age + Gender2 +
+                    (1 | Country) + (0 + age + Gender2 | Country), 
+                    data = H1C_H4B_DATA, REML = F, 
+                    control=lmerControl(optimizer="bobyqa"))
+## Model converges
 
-visualize(H3A_Country, plot = "residuals")
+
+## Reducing model via random effects (slopes) on gender and age to check model comp 
+H3A_reduced_Country <- lmer(System_Justification ~ GINI + age + Gender2 +
+                    (1 | Country), 
+                    data = H1C_H4B_DATA, REML = F, 
+                    control=lmerControl(optimizer="bobyqa")) 
+ 
+
+
+## Model comparison
+model.comparison(H3A_full_Country, H3A_reduced_Country)
+visualize(H3A_full_Country, plot = "residuals")
+## Model comparisons indicate that the better fitting model is once again the 
+## full model
+
+estimates(H3A_full_Country)
+summary(H3A_full_Country)
+tab_model(H3A_full_Country)
+
+H3A_plot_Country <- visualize(H3A_Country, plot = "model",
+          formula = System_Justification~GINI + Country, sample = 42, raw.data = F) +
+        labs(x = "GINI", y = "System Justification")
+
 ## Hypothesis 3B
+H3B_base_model_Country <- lmer(System_Justification ~ 1 + GINI + age + Gender2 +
+                    (1 | Country) + (0 + age + Gender2 | Country), 
+                    data = H1C_H4B_DATA, REML = F, control=lmerControl(optimizer="bobyqa"))
 
-H3B_base_model_Country <- lmer(System_Justification ~ 1 + GINI +  
-                    (1 | Country),  data = INCOMECLEAN)
 
-H3B_Moderation_Model_Country <- lmer(System_Justification ~ 1 + GINI*Social_Mobility +
-                                     (1 | Country), data = INCOMECLEAN)
-summary(H3B_Moderation_Model_Country)
-tab_model(H3B_Moderation_Model_Country)
-visualize(H3B_Moderation_Model_Country, plot = "model",
+H3B_Moderation_full_Model_Country <- lmer(System_Justification ~ GINI*Social_Mobility +
+                                             age + Gender2 +
+                                     (1 | Country) + (0 + age + Gender2 | Country), 
+                                     data = H1C_H4B_DATA, REML = F, 
+                                     control=lmerControl(optimizer="bobyqa")) ## Converges
+
+## Reduced model for model fit
+H3B_Moderation_reduced_model_country <- lmer(System_Justification ~ GINI*Social_Mobility +
+                                             age + Gender2 +
+                                     (1 | Country), 
+                                     data = H1C_H4B_DATA, REML = F, 
+                                     control=lmerControl(optimizer="bobyqa"))
+
+## model comparisons
+model.comparison(H3B_Moderation_full_Model_Country, H3B_Moderation_reduced_model_country)
+visualize(H3B_Moderation_full_Model_Country, plot = "residuals")
+## Full model fails to converge - according to the recommendations of Meteyard & Davies, (2020) &
+## Nezlek, (2008) we opt to use the simpler model that converges properly
+## We dropped the random effects for age and gender (i.e., slope)
+
+
+
+summary(H3B_Moderation_reduced_model_country)
+estimates(H3B_Moderation_reduced_model_country)
+tab_model(H3B_Moderation_reduced_model_country)
+
+H3B_plot_Country <- visualize(H3B_Moderation_full_Model_Country, plot = "model",
           formula = System_Justification~Social_Mobility + Country | GINI,
-          sample = 42)
+          raw.data = F, sample = 42) + 
+        labs(x = "Social Mobility",
+             y = "System Justification")
 
+Plot3_Country <- plot_grid(H3A_plot_Country, H3B_plot_Country)
+
+save_plot("H3A_B_plot_Country.pdf", Plot3_Country)
 ## Building table for H3A and B at region level
-tab_model(H3A_Country, H3B_Moderation_Model_Country, file = "H3A_B_Country_Model.doc")
+tab_model(H3A_full_Country, H3B_Moderation_full_Model_Country, 
+          file = "H3A_B_Country_Model.doc")
 ```
 
 ## Hypothesis 4A - 4B at the country level
 ```{r}
-## Grand mean centering freedom/civil liberties
-INCOMECLEAN$Freedom <- scale(INCOMECLEAN$Freedom, 
-                         center = T, scale = T)
+
 ## H4A & H4B - Freedom predicting SJ at Country level
-H4A_4B_Country_model <- lmer(System_Justification ~ 1 + Freedom + (1 | Country),
-               data = INCOMECLEAN)
-summary(H4A_4B_Country_model)
-tab_model(H4A_4B_Country_model)
-visualize(H4A_4B_Country_model, plot = "model",
-          sample = 42)
+H4A_B_Country_full_model <- lmer(System_Justification ~ Freedom + age + Gender2 +
+                                     (1 | Country) + (0 + age + Gender2 | Country),
+               data = H1C_H4B_DATA, REML = F, control=lmerControl(optimizer="bobyqa"))
+
+
+H4A_B_Country_reduced_model <- lmer(System_Justification ~ Freedom + age + Gender2 
+                                    + (1 | Country),
+               data = H1C_H4B_DATA, REML = F, control=lmerControl(optimizer="bobyqa"))
+## more complex full model is not identifiable - convergence issues
+## Reduced model converges without issue
+
+## model comparisons
+model.comparison(H4A_B_Country_full_model, H4A_B_Country_reduced_model)
+visualize(H4A_B_Country_reduced_model, plot = "residuals")
+## model comparisons once again favor the full model but due to model convergence 
+## issues we will opt for the reduced model missing the random effects for age/gender
+## Residuals are normally distributed
+
+summary(H4A_B_Country_reduced_model)
+estimates(H4A_B_Country_reduced_model)
+tab_model(H4A_B_Country_reduced_model)
+
+H4A_B_Plot_Country <- visualize(H4A_4B_Country_model, plot = "model",
+          formula = System_Justification ~ Freedom + Country,
+          sample = 42, raw.data = F) +
+        labs(y = "System Justification",
+             x = "Freedom")
+
+ggsave("H4A_B_plot_country.pdf", plot = H4A_B_Plot_Country, width = 4, height = 4)
 
 ## Building table for H4A and B at Country level
 tab_model(H4A_4B_Country_model, file = "H4A_B_Country_Model.doc")
 ```
 
+
+
+## EXPLORATORY ANALYSES - NOT PART OF PREREGISTRATION
+## Hypotheses 2A - 2B at the region level
+```{r}
+## Hypothesis 2A - Political ideology predicting SJ at country level
+H2A_region <- lmer(System_Justification ~ 1 + PolOrientation + age + Gender2 +
+                    (1 + PolOrientation | Region) + (0 + age + Gender2 | Region),
+                   data = INCOMECLEAN,
+                   REML = F)
+
+summary(H2A_region)
+tab_model(H2A_region)
+
+H2A_plot_Region <- visualize(H2A_region, plot = "model",
+          formula = System_Justification~PolOrientation + Region,
+          sample = 10, raw.data = F) +
+        labs(x = "Political Orientation",
+             y = "System Justifcation") +
+        theme(legend.position = "none")
+
+## Hypothesis 2B - Relationship between political ideology and SJ moderated by 
+## Political party in power
+H2B_base_model_region <- lmer(System_Justification ~ 1 + PolOrientation + age + Gender2 +
+                    (1 + PolOrientation | Region) + (0 + age + Gender2 | Region),
+                   data = INCOMECLEAN,
+                   REML = F)
+
+
+H2B_Moderation_model_region <- lmer(System_Justification ~ 1 + PolOrientation + 
+                                     polpartypower_fac + PolOrientation*polpartypower_fac +
+                                            age + Gender2 +
+                                     (1 + PolOrientation | Region) +
+                                            (0 + age + Gender2 | Region),
+                             data = INCOMECLEAN, REML = F)
+
+summary(H2B_Moderation_model_region)
+simple_slopes(H2B_Moderation_model_region)
+tab_model(H2B_Moderation_model_region)
+
+ H2b_plot_Region <- visualize(H2B_Moderation_model_region, plot = "model",
+          formula = System_Justification~PolOrientation + Region | 
+                  polpartypower_fac,
+                  sample = 10, raw.data = F) +
+        labs(x = "Political Orientation",
+             y = "System Justifcation") +
+         theme(legend.position = "none")
+
+visualize(H2B_Moderation_model_region, plot = "residuals")
+
+H2A_B_region_plots <- plot_grid(H2A_plot_Region, H2b_plot_Region)
+
+save_plot("H2A_B_region_plot.png", H2A_B_region_plots)
+
+
+## Building a table for both h2a and h2b
+tab_model(H2A_region, H2B_Moderation_model_region, file = "H2A_B_region_model.doc")
+```
+
+## Hypotheses 3A - 3B at the region level
+```{r}
+INCOMECLEAN$GINI <- as.numeric(INCOMECLEAN$GINI)
+## Grand mean centering GINI for multilevel models
+INCOMECLEAN$GINI <- scale(INCOMECLEAN$GINI, 
+                         center = T, scale = T)
+
+## Hypothesis 3A - Economic inequality predicting SJ
+H3A <- lmer(System_Justification ~ 1 + GINI + age + Gender2 +
+                    (1 | Region) + (0 + age + Gender2 | Region),
+            data = INCOMECLEAN, REML = F)
+
+summary(H3A)
+tab_model(H3A)
+
+H3A_plot_Region <- visualize(H3A, plot = "model",
+          formula = System_Justification~GINI + Region, sample = 10, raw.data = F) +
+        labs(x = "GINI",
+             y = "System Justification") + theme(legend.position = "none")
+
+visualize(H3A, plot = "residuals")
+
+## Hypothesis 3B
+## Grand mean center social mobility for multilevel model
+INCOMECLEAN$Social_Mobility <- scale(INCOMECLEAN$Social_Mobility, 
+                         center = T, scale = T)
+
+H3B_base_model <- lmer(System_Justification ~ 1 + GINI + age + Gender2 + 
+                    (1 | Region) + (0 + age + Gender2 | Region),  
+                    data = INCOMECLEAN, REML = F)
+
+H3B_Moderation_Model <- lmer(System_Justification ~ 1 + GINI*Social_Mobility +
+                                     age + Gender2 +(1 | Region) + (0 + age + Gender2 | Region), 
+                             data = INCOMECLEAN, REML = F)
+
+summary(H3B_Moderation_Model)
+tab_model(H3B_Moderation_Model)
+
+H3B_plot_Region <- visualize(H3B_Moderation_Model, plot = "model",
+          formula = System_Justification~GINI + Region | Social_Mobility,
+          sample = 10, raw.data = F) +
+        labs(x = "GINI",
+             y = "System Justification") + theme(legend.position = "none")
+
+H3A_B_region_plots <- plot_grid(H3A_plot_Region, H3B_plot_Region)
+
+save_plot("H3A_B_region_plot.png", H3A_B_region_plots)
+
+## Building table for H3A and B at region level
+tab_model(H3A, H3B_Moderation_Model, file = "H3A_B_Region_Model.doc")
+```
+
 ## Hypotheses 4A - 4B at the Region level
 ```{r}
 ## H4A & H4B - Freedom predicting SJ at Country level
-H4A_4B_Region_model <- lmer(System_Justification ~ 1 + Freedom + (1 | Region),
-               data = INCOMECLEAN)
+H4A_4B_Region_model <- lmer(System_Justification ~ 1 + Freedom + age + Gender2 + 
+                                    (1 | Region) + (0 + age + Gender2 | Region),
+               data = INCOMECLEAN, REML = F)
+
 summary(H4A_4B_Region_model)
 tab_model(H4A_4B_Region_model)
-visualize(H4A_4B_Region_model, plot = "model",
-          sample = 10)
+
+H4A_B_plot_Region <- visualize(H4A_4B_Region_model, plot = "model",
+          formula = System_Justification~Freedom + Region,
+          sample = 10, raw.data = F) +
+        labs(x = "Freedom",
+             y = "System Justification") 
+
+save_plot("H4A_B_region_plot.png", H4A_B_plot_Region)
 
 ## Building table for H4A and B at Region level
 tab_model(H4A_4B_Region_model, file = "H4A_B_Region_Model.doc")
@@ -1403,4 +1686,3 @@ for(degree in seq(0,2,1)){
 }
 results <- as.data.frame(results)
 best <- results[which.min(results$valid.rmse)]
-
