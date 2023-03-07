@@ -930,11 +930,20 @@ H1C_H4B_DATA$Gender2 <- factor(H1C_H4B_DATA$Gender2, levels = c(1, 2),
 ## Multilevel Modeling 
 ## Hypotheses 1A - 1C
 ```{r}
+## removing missing cases specific to H1A-H1B in accord with preregistration
+## and to allow models to be compared via identical cases
+
+H1A_H1B_DATA <- H1A_H1B_DATA %>%
+        drop_na(System_Justification, Gender2, age)
+
 ## Intercept only model
 SJ_NULLMODEL <- lmer(System_Justification ~ 1 + (1 | Country),
-                             data = H1A_H1B_DATA, REML = F)
+                             data = H1A_H1B_DATA, REML = F, 
+                     control = lmerControl(optimizer = "bobyqa"))
 
 tab_model(SJ_NULLMODEL)
+summary(SJ_NULLMODEL)
+estimates(SJ_NULLMODEL)
 
 ## random intercept null model 
 SJ_NULLMODEL <- lmer(System_Justification ~ 1 + (1 | Country),
@@ -953,8 +962,6 @@ ICCest(x = Country, y = System_Justification,
 ```{r}
 # Hypothesis 1A + H1B Objective SES predicting SJ
 
-
-
 ## Model 2 -introducing level one preidctors and random intercepts/slopes for 
 ##income and education
 H1A_B_Reduced2 <- lmer(System_Justification ~ 1 + income_centered + education_centered + Gender2 + age +
@@ -964,6 +971,7 @@ control = lmerControl(optimizer = "bobyqa")
 ) ## Converged
 
 summary(H1A_B_Reduced2)
+tab_model(H1A_B_Reduced2)
 
 
 H1A_B_full <- lmer(System_Justification ~ 1 + income_centered + education_centered + Gender2 + age +
@@ -1026,19 +1034,31 @@ H1C_H4B_DATA$WellinSociety <- scale(H1C_H4B_DATA$WellinSociety,
                                     center = T, scale = F)
 H1C_H4B_DATA$Life_Satisfaction <- scale(H1C_H4B_DATA$Life_Satisfaction,
                                         center = T, scale = F)
+
+## Removing cases that do not have complete cases for H1C as reported in the
+## preregistration
+H1C_data <- H1C_H4B_DATA %>%
+        drop_na(System_Justification, WellinSociety, Life_Satisfaction)
+
 library(mediation)
+
+## intercept only model
+H1C_NULL_model <- lmer(System_Justification ~ 1 + (1|Country),
+                       data = H1C_data, REML = F, 
+                       control = lmerControl(optimizer = "bobyqa"))
+tab_model(H1C_NULL_model)
 
 ## checking A path / creating A path for mediate model
 H1C_Mediate_model <- lmer(Life_Satisfaction ~ WellinSociety +
                                   (1 + WellinSociety | Country), 
-                          data = H1C_H4B_DATA, REML = F, control = lmerControl(optimizer = "bobyqa"))
+                          data = H1C_data, REML = F, control = lmerControl(optimizer = "bobyqa"))
 
 summary(H1C_Mediate_model)
 tab_model(H1C_Mediate_model)
 
 ## Checking B path
 b_path <- lmer(System_Justification ~ 1 + Life_Satisfaction + WellinSociety+ age + Gender2 +
-                       (1|Country), data = H1C_H4B_DATA, REML = F,
+                       (1 + WellinSociety | Country), data = H1C_data, REML = F,
                control = lmerControl(optimizer = "bobyqa"))
 
 summary(b_path)
@@ -1047,7 +1067,7 @@ tab_model(b_path)
 ## Checking C path
 c_path <- lmer(System_Justification ~ 1 + WellinSociety + age + Gender2 +
                        (1 + WellinSociety | Country),
-               data = H1C_H4B_DATA, REML = F, 
+               data = H1C_data, REML = F, 
                control = lmerControl(optimizer = "bobyqa"))
 
 summary(c_path)
@@ -1057,7 +1077,7 @@ tab_model(c_path)
 H1C_Full_model <- lmer(System_Justification ~ 1 + Life_Satisfaction +
   WellinSociety + age + Gender2 +
   (1 + WellinSociety | Country),
-data = H1C_H4B_DATA, REML = F, control = lmerControl(optimizer = "bobyqa")
+data = H1C_data, REML = F, control = lmerControl(optimizer = "bobyqa")
 )
 
 summary(H1C_Full_model)
@@ -1073,6 +1093,7 @@ H1C_results <- mediation::mediate(H1C_Mediate_model, H1C_Full_model,
                        sims = 1000, dropobs = TRUE)
 
 summary(H1C_results)
+H1C_results
 estimates(H1C_Full_model)
 tab_model(H1C_Full_model)
 
@@ -1092,8 +1113,8 @@ visualize(H1C_Full_model, plot = "model",
  
  ## Sobel test 
  library(multilevel)
- sobel(H1C_H4B_DATA$WellinSociety, H1C_H4B_DATA$Life_Satisfaction,
-       H1C_H4B_DATA$System_Justification)
+ sobel(H1C_data$WellinSociety, H1C_data$Life_Satisfaction,
+       H1C_data$System_Justification)
 
 ## Indirect effect is sig < .05
 ## the indirect effect is positive (0.06906148), which means that higher levels 
@@ -1104,28 +1125,44 @@ visualize(H1C_Full_model, plot = "model",
 ## Overall, the Sobel test suggests that life satisfaction partially mediates the 
 ## relationship between well-being in society and system justification, with a 
 ## significant positive indirect effect
+ 
+## Building a table of multilevel models of each of the paths
+tab_model(H1C_NULL_model, H1C_Mediate_model, b_path, c_path, H1C_Full_model,
+          file = "H1C_multilevel_table.doc")
 ```
 
 
 ## Hypotheses 2A - 2B at the country level
 ```{r, warning=FALSE}
 
-## Hypothesis 2A - Political ideology predicting SJ at country level
-H2A_country_full <- lmer(System_Justification ~ 1 + PolOrientation + age + Gender2 +
-                    (1 + PolOrientation | Country) + (0 + age + Gender2 | Country),
-                    data = H1C_H4B_DATA,
-                    REML = F, control=lmerControl(optimizer="bobyqa")) 
-## Converges 
+H2A_B_data <- H1C_H4B_DATA %>%
+        drop_na(System_Justification, PolOrientation, age, Gender2)
 
-## reduced/removal of random effects (i.e.,slopes) for gender and age
+
+## Model 1 H2A and H2B intercept only model
+h2a_b_null <- lmer(System_Justification~1 + (1|Country), data = H2A_B_data,
+                   REML = F, control = lmerControl(optimizer = "bobyqa"))
+
+## Model 2 H2A
+## introduction of level 1 predictors/covariates and random effects of pol. orientation
 H2A_country_reduced <- lmer(System_Justification ~ 1 + PolOrientation + age + Gender2 +
                     (1 + PolOrientation | Country),
-                    data = H1C_H4B_DATA,
-                    REML = F) 
-## Converges
+                    data = H2A_B_data,
+                    REML = F, control = lmerControl(optimizer = "bobyqa")) 
+
+##  Model 3 H2A 
+## Political ideology predicting SJ at country level introducing
+## random slope for age and gender
+H2A_country_full <- lmer(System_Justification ~ 1 + PolOrientation + age + Gender2 +
+                    (1 + PolOrientation | Country) + (0 + age + Gender2 | Country),
+                    data = H2A_B_data,
+                    REML = F, control=lmerControl(optimizer="bobyqa")) 
+## All models converge
+
 
 ## Model comparisons
 model.comparison(H2A_country_full, H2A_country_reduced) 
+anova(h2a_b_null, H2A_country_reduced, H2A_country_full)
 visualize(H2A_country_full, plot = "residuals")
 ## All model comparison factors favor the full model over the reduced
 ## Based upon this, the better fitting  would be 
@@ -1144,40 +1181,53 @@ H2A_plot_Country <- visualize(H2A_country_full, plot = "model",
         labs(x = "Political Orientation",
              y = "System Justifcation")
 
+## Building a table for multilevel models for H2A
+tab_model(h2a_b_null, H2A_country_reduced, H2A_country_full,
+          file = "H2A_table.doc")
+
+
 ## Hypothesis 2B - Relationship between political ideology and SJ moderated by 
 ## Political party in power
-H1C_H4B_DATA$polpartypower_fac <- factor(H1C_H4B_DATA$polpartypower, levels = c(
+H2A_B_data$polpartypower_fac <- factor(H2A_B_data$polpartypower, levels = c(
         0, 1, 2), labels = c("Right", "Center", "Left"))
 
 ## Setting reference level for pol party in power
 reference_level <- "Right"
-H1C_H4B_DATA$polpartypower_fac <- relevel(H1C_H4B_DATA$polpartypower_fac,
+H2A_B_data$polpartypower_fac <- relevel(H2A_B_data$polpartypower_fac,
                                           ref = reference_level)
 
-H2B_base_model_country <- lmer(System_Justification ~ 1 + PolOrientation + age + Gender2 +
-                    (1 + PolOrientation | Country) + (0 + age + Gender2 | Country),
-                    data = H1C_H4B_DATA,
-                    REML = F)
 
+## Introducing level 1 predictors and covariates with random effects for political
+## orientation
+H2B_base_model_country <- lmer(System_Justification ~ 1 + PolOrientation + age + Gender2 +
+                    (1 + PolOrientation | Country),
+                    data = H2A_B_data,
+                    REML = F, control = lmerControl(optimizer = "bobyqa"))
+
+## Introducing level 2 moderator / interaction while cutting random effects for 
+## gender and age
+H2B_Moderation_reducedmodel_Country <- lmer(System_Justification ~ 1 + PolOrientation + 
+                                     polpartypower_fac + PolOrientation*polpartypower_fac +
+                                             age + Gender2 +
+                                     (1 + PolOrientation | Country),
+                             data = H2A_B_data, REML = F)
+
+## Full model with level 2 interaction and random effects for pol orientation,
+## age and gender
 
 H2B_Moderation_fullmodel_Country <- lmer(System_Justification ~ 1 + PolOrientation + 
                                      polpartypower_fac + PolOrientation*polpartypower_fac +
                                              age + Gender2 +
                                      (1 + PolOrientation  | Country) + 
                                              (0 + age + Gender2 | Country),
-                             data = H1C_H4B_DATA, REML = F,
+                             data = H2A_B_data, REML = F,
                              control=lmerControl(optimizer="bobyqa")) 
 ## converges
 
-## Reduced removal of random effects for age and gender ot check model comparisons
-H2B_Moderation_reducedmodel_Country <- lmer(System_Justification ~ 1 + PolOrientation + 
-                                     polpartypower_fac + PolOrientation*polpartypower_fac +
-                                             age + Gender2 +
-                                     (1 + PolOrientation | Country),
-                             data = H1C_H4B_DATA, REML = F)
+
 
 ## Checking model comparison
-model.comparison(H2B_Moderation_fullmodel_Country, H2B_Moderation_reducedmodel_Country)
+anova(h2a_b_null, H2B_base_model_country, H2B_Moderation_reducedmodel_Country, H2B_Moderation_fullmodel_Country)
 visualize(H2B_Moderation_fullmodel_Country, plot = "residuals")
 ## Residuals appear normally distributed in full model indicating good fit
 ## Model comparisons favor the full model once again suggesting to ignore the 
@@ -1189,88 +1239,117 @@ simple_slopes(H2B_Moderation_fullmodel_Country)
 estimates(H2B_Moderation_fullmodel_Country)
 tab_model(H2B_Moderation_fullmodel_Country)
 
+
+
 H2B_plot_Country <- visualize(H2B_Moderation_fullmodel_Country, plot = "model",
           formula = System_Justification~PolOrientation + Country | 
                   polpartypower_fac,
                   sample = 42, raw.data = F) +
          labs(x = "Political Orientation",
-                y = "System Justification")
+                y = "System Justification") +
+        theme_apa() +
+        theme(legend.position = "none")
 
 
-plot2_country <- plot_grid(H2A_plot_Country, H2B_plot_Country, ncol = 2)
+plot_country <- plot_grid(H2B_plot_Country)
 
-save_plot("H2A_B_Plot_country.pdf", plot = plot2_country)
+save_plot("H2B_Plot_country.pdf", plot = plot_country)
 
-## Building a table for both h2a and h2b
-tab_model(H2A_country_full, H2B_Moderation_fullmodel_Country, 
-          file = "H2A_B_country_Model.doc")
+## Building a table of multilevel models for h2b
+tab_model(h2a_b_null, H2B_base_model_country, H2B_Moderation_reducedmodel_Country,
+          H2B_Moderation_fullmodel_Country,
+          file = "H2B_country_Model.doc")
 ```
 
 
 
 ## Hypotheses 3A - 3B at the Country level
 ```{r}
-## Hypothesis 3A - Economic inequality predicting SJ
-H3A_full_Country <- lmer(System_Justification ~ GINI + age + Gender2 +
-                    (1 | Country) + (0 + age + Gender2 | Country), 
-                    data = H1C_H4B_DATA, REML = F, 
-                    control=lmerControl(optimizer="bobyqa"))
-## Model converges
+## Creating data for specific analyses as reported in preregistration
+## No missingness in level 2 predictor/moderator
+H3A_B_data <- H1C_H4B_DATA %>%
+        drop_na(age, Gender2, System_Justification)
 
+## Intercept only model
+H3A_NULLMODEL <- lmer(System_Justification ~ 1 + (1|Country),
+                      data = H3A_B_data, REML = F,
+                      control = lmerControl(optimizer = "bobyqa"))
 
-## Reducing model via random effects (slopes) on gender and age to check model comp 
+## Introduction of level 2 predictor and level 1 covariates with random intercept 
 H3A_reduced_Country <- lmer(System_Justification ~ GINI + age + Gender2 +
                     (1 | Country), 
-                    data = H1C_H4B_DATA, REML = F, 
+                    data = H3A_B_data, REML = F, 
                     control=lmerControl(optimizer="bobyqa")) 
+
+## Hypothesis 3A - Economic inequality predicting SJ introducing random slopes
+## for theoretical covariates age and gender (Preregistered model)
+H3A_full_Country <- lmer(System_Justification ~ GINI + age + Gender2 +
+                    (1 | Country) + (0 + age + Gender2 | Country), 
+                    data = H3A_B_data, REML = F, 
+                    control=lmerControl(optimizer="bobyqa"))
  
+## all models converge properly
 
 
 ## Model comparison
-model.comparison(H3A_full_Country, H3A_reduced_Country)
+anova(H3A_NULLMODEL, H3A_reduced_Country, H3A_full_Country)
 visualize(H3A_full_Country, plot = "residuals")
 ## Model comparisons indicate that the better fitting model is once again the 
-## full model
+## full model. Residuals look normally distributed indicating good fit.
 
 estimates(H3A_full_Country)
 summary(H3A_full_Country)
 tab_model(H3A_full_Country)
 
-H3A_plot_Country <- visualize(H3A_Country, plot = "model",
+H3A_plot_Country <- visualize(H3A_full_Country, plot = "model",
           formula = System_Justification~GINI + Country, sample = 42, raw.data = F) +
         labs(x = "GINI", y = "System Justification")
 
-## Hypothesis 3B
+## Hypothesis 3B base model with introduction of level 2 predictor and level 1
+## covariates with random intercepts 
+## Model 2
 H3B_base_model_Country <- lmer(System_Justification ~ 1 + GINI + age + Gender2 +
-                    (1 | Country) + (0 + age + Gender2 | Country), 
-                    data = H1C_H4B_DATA, REML = F, control=lmerControl(optimizer="bobyqa"))
+  (1 | Country),
+data = H3A_B_data, REML = F, control = lmerControl(optimizer = "bobyqa")
+)
+
+## Introduction of second level two moderator (country level objective social mobility) 
+## and random slopes for theoretical covariates (age adn gender)
+## Model 3
+H3B_Moderation_reduced_model_country <- lmer(System_Justification ~ GINI * Social_Mobility +
+  age + Gender2 + (1 | Country),
+data = H3A_B_data, REML = F,
+control = lmerControl(optimizer = "bobyqa")
+)
+
+H3B_Moderation_full_Model_Country <- lmer(System_Justification ~ GINI * Social_Mobility +
+  age + Gender2 +
+  (1 | Country) + (0 + age + Gender2 | Country),
+data = H3A_B_data, REML = F,
+control = lmerControl(optimizer = "bobyqa")
+)
 
 
-H3B_Moderation_full_Model_Country <- lmer(System_Justification ~ GINI*Social_Mobility +
-                                             age + Gender2 +
-                                     (1 | Country) + (0 + age + Gender2 | Country), 
-                                     data = H1C_H4B_DATA, REML = F, 
-                                     control=lmerControl(optimizer="bobyqa")) ## Converges
+## All models converge properly
 
-## Reduced model for model fit
-H3B_Moderation_reduced_model_country <- lmer(System_Justification ~ GINI*Social_Mobility +
-                                             age + Gender2 +
-                                     (1 | Country), 
-                                     data = H1C_H4B_DATA, REML = F, 
-                                     control=lmerControl(optimizer="bobyqa"))
 
 ## model comparisons
-model.comparison(H3B_Moderation_full_Model_Country, H3B_Moderation_reduced_model_country)
+anova(H3A_NULLMODEL,H3B_base_model_Country, 
+      H3B_Moderation_reduced_model_country, H3B_Moderation_full_Model_Country)
+
 visualize(H3B_Moderation_full_Model_Country, plot = "residuals")
-## Full model fails to converge - according to the recommendations of Meteyard & Davies, (2020) &
-## Nezlek, (2008) we opt to use the simpler model that converges properly
-## We dropped the random effects for age and gender (i.e., slope)
+## According to the model comparison  the best fitting model is the most 
+## complex theorized preregistered model, further evidence of good 
+## fit can be seen in the normally distributed and uniform residuals.
+## Meteyard & Davies, (2020) & Nezlek, (2008) 
 
 
 
-summary(H3B_Moderation_reduced_model_country)
-estimates(H3B_Moderation_reduced_model_country)
-tab_model(H3B_Moderation_reduced_model_country)
+summary(H3B_Moderation_full_Model_Country)
+estimates(H3B_Moderation_full_Model_Country)
+tab_model(H3B_Moderation_full_Model_Country)
+simple_slopes(H3B_Moderation_full_Model_Country)
+
 
 H3B_plot_Country <- visualize(H3B_Moderation_full_Model_Country, plot = "model",
           formula = System_Justification~Social_Mobility + Country | GINI,
