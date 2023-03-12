@@ -10,7 +10,6 @@ output: html_document
 setwd("/Users/Evanvaldes1/Desktop/MASSEY/STUDY 2/CODE AND DATA/Thesis-DI2-Data-SJ-Study")
 ```
 
-
 ```{r}
 library(dplyr)
 library(stringr)
@@ -1408,6 +1407,7 @@ visualize(H3A_full_Country, plot = "residuals")
 estimates(H3A_full_Country)
 summary(H3A_full_Country)
 tab_model(H3A_full_Country)
+simple_slopes(H3A_full_Country)
 
 H3A_plot_Country <- visualize(H3A_full_Country, plot = "model",
           formula = System_Justification~GINI + Country, sample = 42, raw.data = F) +
@@ -1421,6 +1421,16 @@ save_plot("h3a_plot.pdf", plot = H3A_plot_Country)
 tab_model(H3A_NULLMODEL, H3A_reduced_Country, H3A_full_Country,
           file = "H3A_Table.doc")
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Converting social mobility into a factor of high medium and low
+
+H3A_B_data$Social_Mobility_factor <- cut(H3A_B_data$Social_Mobility, 
+                                          breaks = c(-Inf, -0.5, 0.5, Inf), 
+                                          labels = c("Low", "Medium", "High"))
+
+Social_Mobility_reference_level <- "Low"
+H3A_B_data$Social_Mobility_factor <- relevel(H3A_B_data$Social_Mobility_factor,
+                                          ref = Social_Mobility_reference_level)
+
 ## Hypothesis 3B base model with introduction of level 2 predictor and level 1
 ## covariates with random intercepts 
 ## Model 2
@@ -1429,16 +1439,17 @@ H3B_base_model_Country <- lmer(System_Justification ~ 1 + GINI + age + Gender2 +
 data = H3A_B_data, REML = F, control = lmerControl(optimizer = "bobyqa")
 )
 
+
 ## Introduction of second level two moderator (country level objective social mobility) 
 ## and random slopes for theoretical covariates (age and gender)
 ## Model 3
-H3B_Moderation_reduced_model_country <- lmer(System_Justification ~ GINI * Social_Mobility +
-  age + Gender2 + (1 | Country),
-data = H3A_B_data, REML = F,
+H3B_Moderation_reduced_model_country <- lmer(System_Justification ~ GINI * 
+                                Social_Mobility_factor + age + Gender2 + 
+                                        (1 | Country), data = H3A_B_data, REML = F,
 control = lmerControl(optimizer = "bobyqa")
 )
 
-H3B_Moderation_full_Model_Country <- lmer(System_Justification ~ GINI * Social_Mobility +
+H3B_Moderation_full_Model_Country <- lmer(System_Justification ~ GINI * Social_Mobility_factor +
   age + Gender2 +
   (1 | Country) + (0 + age + Gender2 | Country),
 data = H3A_B_data, REML = F,
@@ -1446,49 +1457,47 @@ control = lmerControl(optimizer = "bobyqa")
 )
 
 
-## Models converge except for most complex preregistered model
+## All models converge without issue 
 
 ## model comparisons
 anova(H3A_NULLMODEL,H3B_base_model_Country, 
       H3B_Moderation_reduced_model_country, H3B_Moderation_full_Model_Country)
 
-visualize(H3B_Moderation_reduced_model_country, plot = "residuals")
+visualize(H3B_Moderation_full_Model_Country, plot = "residuals")
 
-## According to the model comparison  the best fitting model is the most 
-## complex theorized preregistered model, however due to the recommendations of 
-## Meteyard & Davies, (2020) & Nezlek, (2008), we opt to select the reduced model
-## per convergence issue. Residuals are also more uniform within the reduced
-## model indicating better fit.
+## According to the model comparison the best fitting model is the most 
+## complex theorized preregistered model as can be seen by the recommendations 
+## of Meteyard & Davies (2020) & Nezlek (2008)
 
-summary(H3B_Moderation_reduced_model_country)
-estimates(H3B_Moderation_reduced_model_country)
-tab_model(H3B_Moderation_reduced_model_country)
-simple_slopes(H3B_Moderation_reduced_model_country)
+summary(H3B_Moderation_full_Model_Country)
+estimates(H3B_Moderation_full_Model_Country)
+tab_model(H3B_Moderation_full_Model_Country)
+simple_slopes(H3B_Moderation_full_Model_Country)
 
 
 H3B_plot_Country <- visualize(H3B_Moderation_reduced_model_country, plot = "model",
-          formula = System_Justification~GINI + Country | Social_Mobility ,
+          formula = System_Justification~GINI + Country | Social_Mobility_factor ,
           raw.data = F, sample = 42) + 
         labs(x = "GINI",
              y = "System Justification") +
         theme_apa() +
-        theme(legend.position = "none")
+        theme(legend.position = "none") +
+        facet_wrap(Social_Mobility_factor ~ .)
 
- H3B_interaction_plot <- plot_model(H3B_Moderation_full_Model_Country, type = "pred", 
-           terms = c("GINI", "Social_Mobility [-1.78, 0, 1.73]")) +
+
+H3B_interaction_plot <- plot_model(H3B_Moderation_full_Model_Country, type = "int") +
         theme_apa() +
         labs(x = "GINI",
              y = "System Justification",
              title = NULL)
 
 
-
-
-save_plot("H3A_B_plot_Country.pdf", H3B_plot_Country)
+save_plot("H3B_plot_Country.pdf", H3B_plot_Country)
 save_plot("H3B_interaction_plot.pdf", H3B_interaction_plot)
 
 ## Building table for H3A and B at region level
-tab_model(H3A_NULLMODEL, H3B_base_model_Country, H3B_Moderation_reduced_model_country, 
+tab_model(H3A_NULLMODEL, H3B_base_model_Country, H3B_Moderation_reduced_model_country,
+          H3B_Moderation_full_Model_Country,
           file = "H3B_Country_Model.doc")
 ```
 
@@ -1531,7 +1540,7 @@ tab_model(H4A_4B_Country_model, file = "H4A_B_Country_Model.doc")
 ```
 
 
-
+##______________________________________________________________________________
 ## EXPLORATORY ANALYSES - NOT PART OF PREREGISTRATION
 ## Hypotheses 2A - 2B at the region level
 ```{r}
